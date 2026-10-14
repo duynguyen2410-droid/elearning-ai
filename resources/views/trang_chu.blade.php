@@ -1095,14 +1095,26 @@
                     {{-- Dynamic CTA --}}
                     <div class="hero-cta">
                         @if (Auth::check())
-                            <a href="{{ route('dashboard') }}" class="btn-primary-cta">
-                                <i class="fas fa-rocket"></i>
-                                Vào học ngay
-                            </a>
-                            <a href="{{ route('dashboard') }}" class="btn-secondary-cta">
-                                <i class="fas fa-th-large"></i>
-                                Bảng điều khiển
-                            </a>
+                            @if(Auth::user()->id_phan_quyen == 1)
+                                <a href="{{ route('quan_tri.tong_quan') }}" class="btn-primary-cta">
+                                    <i class="fas fa-shield-halved"></i>
+                                    Quản trị hệ thống
+                                </a>
+                            @elseif(Auth::user()->id_phan_quyen == 2)
+                                <a href="{{ route('giang_vien.tong_quan') }}" class="btn-primary-cta">
+                                    <i class="fas fa-chalkboard-user"></i>
+                                    Bàn làm việc Giảng viên
+                                </a>
+                            @else
+                                <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-primary-cta">
+                                    <i class="fas fa-rocket"></i>
+                                    Vào học ngay
+                                </a>
+                                <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-secondary-cta">
+                                    <i class="fas fa-th-large"></i>
+                                    Khóa học của tôi
+                                </a>
+                            @endif
                         @else
                             <a href="{{ route('login') }}" class="btn-primary-cta">
                                 <i class="fas fa-rocket"></i>
@@ -1465,10 +1477,22 @@
                     </p>
                     <div class="cta-actions">
                         @if (Auth::check())
-                            <a href="{{ route('dashboard') }}" class="btn-cta-white">
-                                <i class="fas fa-rocket"></i>
-                                Tiếp tục học ngay
-                            </a>
+                            @if(Auth::user()->id_phan_quyen == 1)
+                                <a href="{{ route('quan_tri.tong_quan') }}" class="btn-cta-white">
+                                    <i class="fas fa-shield-halved"></i>
+                                    Vào Quản trị hệ thống
+                                </a>
+                            @elseif(Auth::user()->id_phan_quyen == 2)
+                                <a href="{{ route('giang_vien.tong_quan') }}" class="btn-cta-white">
+                                    <i class="fas fa-chalkboard-user"></i>
+                                    Vào Bàn làm việc Giảng viên
+                                </a>
+                            @else
+                                <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-cta-white">
+                                    <i class="fas fa-rocket"></i>
+                                    Tiếp tục học ngay
+                                </a>
+                            @endif
                         @else
                             <a href="{{ route('register') }}" class="btn-cta-white">
                                 <i class="fas fa-rocket"></i>

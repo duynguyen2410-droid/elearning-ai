@@ -31,4 +31,14 @@ class ChuongMucBaiHoc extends Model
     {
         return $this->hasMany(ChiTietBaiHoc::class, 'id_chuong_muc', 'id_chuong_muc')->orderBy('thu_tu_sap_xep', 'asc');
     }
+
+    public function chiTietBaiHoc()
+    {
+        return $this->danhSachBaiHoc();
+    }
+
+    public function baiHoc()
+    {
+        return $this->danhSachBaiHoc();
+    }
 }

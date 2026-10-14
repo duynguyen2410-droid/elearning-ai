@@ -509,12 +509,31 @@
 
         {{-- Footer: Form Input --}}
         <div class="chatbot-footer">
+            {{-- Khung xem trước ảnh đính kèm (Image Preview) --}}
+            <div id="chat-image-preview-wrapper" class="d-none p-2 border-top bg-light position-relative mb-2 rounded-3">
+                <div class="position-relative d-inline-block">
+                    <img id="chat-image-preview" src="" alt="Xem trước" class="rounded-3 border shadow-xs" style="height: 65px; max-width: 120px; object-fit: cover; display: block;">
+                    <button type="button" id="btn-remove-image" class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 translate-middle p-0 d-flex align-items-center justify-content-center shadow-xs" style="width: 20px; height: 20px; font-size: 10px; line-height: 1;" title="Hủy chọn ảnh">
+                        ✕
+                    </button>
+                </div>
+                <span class="text-xs text-muted ms-2 align-middle text-truncate d-inline-block" style="max-width: 180px;" id="chat-image-name"></span>
+            </div>
+
+            {{-- Thẻ input file ẩn --}}
+            <input type="file" id="chat-image-input" accept="image/jpeg,image/png,image/webp,image/jpg" class="d-none">
+
             <form id="chatbotForm" class="chat-input-form" onsubmit="return false;">
+                {{-- Nút đính kèm ảnh --}}
+                <button type="button" id="btn-attach-image" class="btn btn-sm btn-light border-0 me-1 text-secondary d-flex align-items-center justify-content-center p-1" style="width: 32px; height: 32px; border-radius: 0.5rem;" title="Gửi ảnh bài tập / lỗi">
+                    <i class="fa-solid fa-image fs-6 text-muted"></i>
+                </button>
+
                 <input
                     type="text"
                     id="chatbotInput"
                     class="chat-input-field"
-                    placeholder="Đặt câu hỏi cho AI (nhấn Enter để gửi)..."
+                    placeholder="Đặt câu hỏi hoặc gửi ảnh bài tập..."
                     autocomplete="off"
                     maxlength="1000"
                 />
@@ -549,7 +568,60 @@ document.addEventListener('DOMContentLoaded', function () {
     const sendBtn      = document.getElementById('chatbotSendBtn');
     const toggleIcon   = document.getElementById('chatbotToggleIcon');
 
+    // Các thành phần đính kèm ảnh
+    const btnAttachImage          = document.getElementById('btn-attach-image');
+    const chatImageInput          = document.getElementById('chat-image-input');
+    const chatImagePreviewWrapper = document.getElementById('chat-image-preview-wrapper');
+    const chatImagePreview        = document.getElementById('chat-image-preview');
+    const chatImageName           = document.getElementById('chat-image-name');
+    const btnRemoveImage          = document.getElementById('btn-remove-image');
+
+    let currentImageDataUrl = null;
     let isWaitingForAi = false;
+
+    // Đính kèm ảnh: Mở hộp thoại chọn file
+    btnAttachImage.addEventListener('click', () => {
+        chatImageInput.click();
+    });
+
+    // Khi người dùng chọn file ảnh
+    chatImageInput.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        if (!file.type.match('image.*')) {
+            alert('Vui lòng chọn tệp định dạng hình ảnh (jpg, png, webp, jpeg).');
+            clearImageSelection();
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh có kích thước nhỏ hơn.');
+            clearImageSelection();
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            currentImageDataUrl = e.target.result;
+            chatImagePreview.src = currentImageDataUrl;
+            chatImageName.textContent = file.name;
+            chatImagePreviewWrapper.classList.remove('d-none');
+            chatInput.focus();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Nút hủy chọn ảnh
+    function clearImageSelection() {
+        chatImageInput.value = '';
+        currentImageDataUrl = null;
+        chatImagePreview.src = '';
+        chatImageName.textContent = '';
+        chatImagePreviewWrapper.classList.add('d-none');
+    }
+
+    btnRemoveImage.addEventListener('click', clearImageSelection);
 
     // Detect Lesson ID if present on page
     function getLessonId() {
@@ -582,6 +654,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Clear Conversation
     clearBtn.addEventListener('click', () => {
+        clearImageSelection();
         chatBody.innerHTML = `
             <div class="chat-msg bot">
                 <div class="chat-msg-avatar">
@@ -655,13 +728,26 @@ document.addEventListener('DOMContentLoaded', function () {
         return formatted || escaped.replace(/\n/g, '<br>');
     }
 
-    // Append User Message
-    function appendUserMessage(text) {
+    // Append User Message (Hỗ trợ ảnh đính kèm)
+    function appendUserMessage(text, imageSrc = null) {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'chat-msg user';
+
+        let contentHtml = '';
+        if (imageSrc) {
+            contentHtml += `
+                <div class="mb-1.5 text-end">
+                    <img src="${imageSrc}" class="rounded-3 shadow-xs" style="max-height: 140px; max-width: 100%; object-fit: contain; cursor: pointer; border: 1.5px solid rgba(255, 255, 255, 0.4);" onclick="window.open('${imageSrc}', '_blank')" title="Bấm để xem ảnh lớn">
+                </div>
+            `;
+        }
+        if (text) {
+            contentHtml += `<div>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+        }
+
         msgDiv.innerHTML = `
             <div class="chat-bubble">
-                ${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                ${contentHtml}
             </div>
         `;
         chatBody.appendChild(msgDiv);
@@ -708,13 +794,23 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typing) typing.remove();
     }
 
-    // Send Message Handler
-    async function sendMessage(text) {
-        const message = (text || chatInput.value).trim();
-        if (!message || isWaitingForAi) return;
+    // Send Message Handler (Hỗ trợ FormData đa phương thức text + image)
+    async function sendMessage(text = null) {
+        const message = (text !== null ? text : chatInput.value).trim();
+        const selectedFile = chatImageInput.files && chatImageInput.files[0] ? chatImageInput.files[0] : null;
 
-        appendUserMessage(message);
+        if ((!message && !selectedFile) || isWaitingForAi) return;
+
+        // Lưu ảnh data URL để hiển thị trong bong bóng chat
+        const imageToSend = currentImageDataUrl;
+
+        // Hiển thị tin nhắn người dùng
+        appendUserMessage(message, imageToSend);
+
+        // Reset input text & khung xem trước ảnh
         chatInput.value = '';
+        clearImageSelection();
+
         isWaitingForAi = true;
         sendBtn.disabled = true;
         showTypingIndicator();
@@ -723,17 +819,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const lessonId = getLessonId();
 
         try {
+            const formData = new FormData();
+            if (message) {
+                formData.append('message', message);
+            }
+            if (selectedFile) {
+                formData.append('image', selectedFile);
+            }
+            if (lessonId) {
+                formData.append('lesson_id', lessonId);
+            }
+
             const response = await fetch("{{ route('chatbot.ask') }}", {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({
-                    message: message,
-                    lesson_id: lessonId,
-                })
+                body: formData
             });
 
             removeTypingIndicator();

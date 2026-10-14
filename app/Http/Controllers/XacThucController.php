@@ -22,8 +22,10 @@ class XacThucController extends Controller
     {
         if (Auth::check()) {
             $user = Auth::user();
-            if ($user && ((int)$user->id_phan_quyen === 1 || in_array($user->phan_quyen ?? '', ['admin', 'quan_tri']))) {
+            if ((int)$user->id_phan_quyen === 1) {
                 return redirect()->route('quan_tri.tong_quan');
+            } elseif ((int)$user->id_phan_quyen === 2) {
+                return redirect()->route('giang_vien.tong_quan');
             }
             return redirect()->route('hoc_vien.tong_quan');
         }
@@ -72,9 +74,11 @@ class XacThucController extends Controller
                     ->with('error', 'Tài khoản của bạn đã bị tạm khóa.');
             }
 
-            // Chuyển hướng theo phân quyền: Quản trị viên -> /quan-tri/tong-quan, Học viên -> /hoc-vien/tong-quan
-            if ($user && ((int)$user->id_phan_quyen === 1 || in_array($user->phan_quyen ?? '', ['admin', 'quan_tri']))) {
+            // Chuyển hướng theo 3 vai trò phân quyền
+            if ((int)$user->id_phan_quyen === 1) {
                 return redirect()->intended(route('quan_tri.tong_quan'));
+            } elseif ((int)$user->id_phan_quyen === 2) {
+                return redirect()->intended(route('giang_vien.tong_quan'));
             }
 
             return redirect()->intended(route('hoc_vien.tong_quan'));
@@ -143,7 +147,7 @@ class XacThucController extends Controller
             'ho_va_ten'            => $request->ho_ten,
             'dia_chi_email'        => $request->email,
             'mat_khau_ma_hoa'      => Hash::make($request->password),
-            'id_phan_quyen'        => 2, // 2 is typically the student role ID
+            'id_phan_quyen'        => 3, // 3 is Học viên (Student role)
             'trang_thai_tai_khoan' => 'kich_hoat',
         ]);
 
@@ -151,6 +155,35 @@ class XacThucController extends Controller
 
         return redirect()->route('hoc_vien.tong_quan')
             ->with('success', 'Đăng ký tài khoản thành công! Chào mừng bạn đến với EduMind AI.');
+    }
+
+    /**
+     * Tự đổi mật khẩu cá nhân cho người dùng đang đăng nhập (Admin, Giảng viên, Học viên)
+     */
+    public function doiMatKhauCaNhan(Request $request)
+    {
+        $request->validate([
+            'mat_khau_hien_tai' => ['required', 'string'],
+            'mat_khau_moi'      => ['required', 'string', 'min:6', 'confirmed'],
+        ], [
+            'mat_khau_hien_tai.required' => 'Vui lòng nhập mật khẩu hiện tại.',
+            'mat_khau_moi.required'      => 'Vui lòng nhập mật khẩu mới.',
+            'mat_khau_moi.min'           => 'Mật khẩu mới phải có ít nhất 6 ký tự.',
+            'mat_khau_moi.confirmed'     => 'Xác nhận mật khẩu mới không trùng khớp.',
+        ]);
+
+        $user = Auth::user();
+
+        // Kiểm tra mật khẩu hiện tại
+        if (!Hash::check($request->mat_khau_hien_tai, $user->mat_khau_ma_hoa)) {
+            return back()->with('error', 'Mật khẩu hiện tại không chính xác!');
+        }
+
+        // Cập nhật mật khẩu mới
+        $user->mat_khau_ma_hoa = Hash::make($request->mat_khau_moi);
+        $user->save();
+
+        return back()->with('success', 'Đã cập nhật mật khẩu thành công!');
     }
 }
 

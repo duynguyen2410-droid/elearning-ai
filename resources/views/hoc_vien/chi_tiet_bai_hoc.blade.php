@@ -513,21 +513,34 @@
         {{-- ════════════════════════════════════════════════════════════
              BREADCRUMB
         ════════════════════════════════════════════════════════════ --}}
-        <nav class="lesson-breadcrumb">
-            <a href="{{ url('/') }}">
-                <i class="fa-solid fa-house"></i> Trang chủ
-            </a>
-            <span class="separator"><i class="fa-solid fa-chevron-right"></i></span>
-            <a href="{{ route('hoc_vien.tong_quan') }}">
-                <i class="fa-solid fa-graduation-cap"></i>
-                {{ $khoaHoc->tieu_de_khoa_hoc ?? $khoaHoc->ten_khoa_hoc ?? 'Khóa học của bạn' }}
-            </a>
-            @if ($chuongMuc)
+        <nav class="lesson-breadcrumb d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="{{ url('/') }}">
+                    <i class="fa-solid fa-house"></i> Trang chủ
+                </a>
                 <span class="separator"><i class="fa-solid fa-chevron-right"></i></span>
-                <span class="text-secondary">{{ $chuongMuc->tieu_de_chuong_muc ?? $chuongMuc->ten_chuong_muc }}</span>
+                @if(Auth::check() && Auth::user()->id_phan_quyen == 2)
+                    <a href="{{ route('giang_vien.tong_quan') }}">
+                        <i class="fa-solid fa-chalkboard-user"></i> Bàn làm việc Giảng viên
+                    </a>
+                @else
+                    <a href="{{ route('hoc_vien.tong_quan') }}">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                        {{ $khoaHoc->tieu_de_khoa_hoc ?? $khoaHoc->ten_khoa_hoc ?? 'Khóa học của bạn' }}
+                    </a>
+                @endif
+                @if ($chuongMuc)
+                    <span class="separator"><i class="fa-solid fa-chevron-right"></i></span>
+                    <span class="text-secondary">{{ $chuongMuc->tieu_de_chuong_muc ?? $chuongMuc->ten_chuong_muc }}</span>
+                @endif
+                <span class="separator"><i class="fa-solid fa-chevron-right"></i></span>
+                <span class="current" title="{{ $baiHoc->tieu_de_bai_hoc }}">{{ $baiHoc->tieu_de_bai_hoc }}</span>
+            </div>
+            @if(Auth::check() && Auth::user()->id_phan_quyen == 2)
+                <span class="badge py-1.5 px-3 rounded-pill text-xs d-none d-md-inline-flex align-items-center gap-1.5 shadow-xs" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe;">
+                    <i class="fa-solid fa-eye text-primary"></i> Chế độ xem trước của Giảng viên
+                </span>
             @endif
-            <span class="separator"><i class="fa-solid fa-chevron-right"></i></span>
-            <span class="current" title="{{ $baiHoc->tieu_de_bai_hoc }}">{{ $baiHoc->tieu_de_bai_hoc }}</span>
         </nav>
 
         <div class="row g-4">
@@ -546,8 +559,8 @@
 
                     @if ($isYoutube)
                         @php
-                            // Extract YouTube Video ID
-                            preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $videoUrl, $match);
+                            // Extract YouTube Video ID (hỗ trợ cả watch?v=, youtu.be, embed, shorts)
+                            preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?|shorts)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $videoUrl, $match);
                             $youtubeId = $match[1] ?? '';
                         @endphp
                         @if ($youtubeId)
@@ -561,12 +574,12 @@
                             <div class="video-placeholder-box">
                                 <div class="video-placeholder-icon"><i class="fa-solid fa-play"></i></div>
                                 <h5 class="fw-bold mb-1">{{ $baiHoc->tieu_de_bai_hoc }}</h5>
-                                <p class="text-white-50 small mb-0">Video bài giảng chuẩn định dạng YouTube</p>
+                                <p class="text-white-50 small mb-0">Video bài giảng YouTube</p>
                             </div>
                         @endif
                     @elseif ($isDirectVideo)
                         <video class="lesson-video-player" controls preload="metadata">
-                            <source src="{{ $videoUrl }}" type="video/mp4">
+                            <source src="{{ str_starts_with($videoUrl, 'http') ? $videoUrl : asset($videoUrl) }}" type="video/mp4">
                             Trình duyệt của bạn không hỗ trợ thẻ video HTML5.
                         </video>
                     @else
@@ -578,7 +591,7 @@
                             <h4 class="fw-bold mb-2">{{ $baiHoc->tieu_de_bai_hoc }}</h4>
                             <p class="text-white-50 small mb-0">
                                 @if ($videoUrl)
-                                    <i class="fa-solid fa-link me-1"></i> Đường dẫn bài giảng: {{ $videoUrl }}
+                                    <i class="fa-solid fa-link me-1"></i> Đường dẫn bài giảng: <a href="{{ $videoUrl }}" target="_blank" class="text-white text-decoration-underline">{{ $videoUrl }}</a>
                                 @else
                                     Khóa học trực tuyến EduMind AI — Hệ thống bài giảng kèm trợ lý ôn thi thông minh
                                 @endif
@@ -664,15 +677,26 @@
                 @endphp
 
                 <div class="lesson-action-footer">
-                    {{-- Quay lại khóa học --}}
-                    <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-nav-course">
-                        <i class="fa-solid fa-arrow-left"></i>
-                        Quay lại khóa học
-                    </a>
+                    {{-- Quay lại khóa học / Bàn làm việc --}}
+                    @if(Auth::check() && Auth::user()->id_phan_quyen == 2)
+                        <a href="{{ route('giang_vien.tong_quan') }}" class="btn-nav-course">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            Quay lại Bàn làm việc Giảng viên
+                        </a>
+                    @else
+                        <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-nav-course">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            Quay lại khóa học
+                        </a>
+                    @endif
 
                     {{-- Quiz Action Button --}}
                     <div class="d-flex align-items-center gap-2">
-                        @if ($quiz)
+                        @if (Auth::check() && Auth::user()->id_phan_quyen == 2)
+                            <a href="{{ route('giang_vien.tong_quan', ['tab' => 'de-thi']) }}" class="btn-quiz-take-main" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Quản lý đề thi bài này
+                            </a>
+                        @elseif ($quiz)
                             <a href="{{ route('quiz.take', $quiz->id_de_thi) }}" class="btn-quiz-take-main">
                                 <i class="fa-solid fa-file-pen"></i>
                                 Làm bài kiểm tra ngay

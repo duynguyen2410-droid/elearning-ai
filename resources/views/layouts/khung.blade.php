@@ -272,11 +272,25 @@
                         </a>
                     </li>
                     @auth
-                    <li class="nav-item">
-                        <a class="nav-link-custom {{ request()->is('hoc-vien*') || request()->is('quan-tri*') || request()->is('student*') || request()->is('dashboard*') || request()->is('tong-quan*') ? 'active' : '' }}" href="{{ Auth::user()->id_phan_quyen == 1 ? route('quan_tri.tong_quan') : route('hoc_vien.tong_quan') }}">
-                            <i class="fa-solid fa-book-open"></i> {{ Auth::user()->id_phan_quyen == 1 ? 'Quản trị hệ thống' : 'Khóa học của tôi' }}
-                        </a>
-                    </li>
+                        @if(Auth::user()->id_phan_quyen == 1)
+                        <li class="nav-item">
+                            <a class="nav-link-custom {{ request()->is('quan-tri*') ? 'active' : '' }}" href="{{ route('quan_tri.tong_quan') }}">
+                                <i class="fa-solid fa-shield-halved"></i> Quản trị hệ thống
+                            </a>
+                        </li>
+                        @elseif(Auth::user()->id_phan_quyen == 2)
+                        <li class="nav-item">
+                            <a class="nav-link-custom {{ request()->is('giang-vien*') ? 'active text-primary fw-bold' : '' }}" href="{{ route('giang_vien.tong_quan') }}">
+                                <i class="fa-solid fa-chalkboard-user me-1"></i> Bàn làm việc Giảng viên
+                            </a>
+                        </li>
+                        @elseif(Auth::user()->id_phan_quyen == 3)
+                        <li class="nav-item">
+                            <a class="nav-link-custom {{ request()->is('hoc-vien*') ? 'active' : '' }}" href="{{ route('hoc_vien.tong_quan') }}">
+                                <i class="fa-solid fa-book-open"></i> Khóa học của tôi
+                            </a>
+                        </li>
+                        @endif
                     @endauth
                 </ul>
 
@@ -291,12 +305,52 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-modern shadow-lg mt-2">
                                 <li class="px-3 py-2 border-bottom mb-1 bg-light-subtle rounded-top">
-                                    <p class="small text-muted mb-0"><i class="fa-solid fa-circle-user me-1"></i> Tài khoản</p>
+                                    <div class="d-flex align-items-center justify-content-between mb-0.5">
+                                        <p class="small text-muted mb-0"><i class="fa-solid fa-circle-user me-1"></i> Tài khoản</p>
+                                        <span class="badge {{ Auth::user()->id_phan_quyen == 1 ? 'bg-danger-subtle text-danger' : (Auth::user()->id_phan_quyen == 2 ? 'bg-info-subtle text-info' : 'bg-success-subtle text-success') }} text-xs">
+                                            {{ Auth::user()->id_phan_quyen == 1 ? 'Quản trị viên' : (Auth::user()->id_phan_quyen == 2 ? 'Giảng viên' : 'Học viên') }}
+                                        </span>
+                                    </div>
                                     <p class="fw-semibold text-dark mb-0 text-truncate" style="max-width: 190px;">{{ Auth::user()->dia_chi_email }}</p>
                                 </li>
+                                @if (Auth::user()->id_phan_quyen == 1)
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('quan_tri.tong_quan') }}">
+                                            <i class="fa-solid fa-shield-halved text-primary"></i> Quản trị hệ thống
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('quan_tri.tong_quan', ['tab' => 'tai-khoan']) }}">
+                                            <i class="fa-solid fa-users-gear text-info"></i> Quản lý tài khoản
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('quan_tri.tong_quan', ['tab' => 'khoa-hoc']) }}">
+                                            <i class="fa-solid fa-book-open text-success"></i> Quản lý khóa học
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('quan_tri.tong_quan', ['tab' => 'de-thi']) }}">
+                                            <i class="fa-solid fa-wand-magic-sparkles text-warning"></i> Giám sát đề thi AI
+                                        </a>
+                                    </li>
+                                @elseif (Auth::user()->id_phan_quyen == 2)
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('giang_vien.tong_quan') }}">
+                                            <i class="fa-solid fa-chalkboard-user text-primary"></i> Bàn làm việc Giảng viên
+                                        </a>
+                                    </li>
+                                @elseif (Auth::user()->id_phan_quyen == 3)
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('hoc_vien.tong_quan') }}">
+                                            <i class="fa-solid fa-book-open text-primary"></i> Khóa học của tôi
+                                        </a>
+                                    </li>
+                                @endif
+                                <li><hr class="dropdown-divider my-1"></li>
                                 <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2" href="{{ Auth::user()->id_phan_quyen == 1 ? route('quan_tri.tong_quan') : route('hoc_vien.tong_quan') }}">
-                                        <i class="fa-solid fa-table-columns text-primary"></i> Bảng điều khiển
+                                    <a class="dropdown-item d-flex align-items-center gap-2 text-dark" href="#" data-bs-toggle="modal" data-bs-target="#modalDoiMatKhauCaNhan">
+                                        <i class="fa-solid fa-key text-warning"></i> Đổi mật khẩu
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider my-1"></li>
@@ -323,6 +377,57 @@
         </div>
     </nav>
 
+    @auth
+    {{-- Modal Đổi mật khẩu cá nhân dành cho cả 3 vai trò --}}
+    <div class="modal fade" id="modalDoiMatKhauCaNhan" tabindex="-1" aria-labelledby="modalDoiMatKhauCaNhanLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom py-3 px-4">
+                    <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="modalDoiMatKhauCaNhanLabel">
+                        <i class="fa-solid fa-key text-warning"></i> Đổi Mật Khẩu Cá Nhân
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('tai_khoan.doi_mat_khau') }}" method="POST">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="p-3 rounded-3 bg-light mb-3">
+                            <div class="small fw-semibold text-dark">{{ Auth::user()->ho_va_ten }}</div>
+                            <div class="text-xs text-muted font-monospace">{{ Auth::user()->dia_chi_email }}</div>
+                            <div class="mt-1">
+                                <span class="badge {{ Auth::user()->id_phan_quyen == 1 ? 'bg-danger-subtle text-danger' : (Auth::user()->id_phan_quyen == 2 ? 'bg-info-subtle text-info' : 'bg-success-subtle text-success') }} text-xs">
+                                    {{ Auth::user()->id_phan_quyen == 1 ? 'Quản trị viên' : (Auth::user()->id_phan_quyen == 2 ? 'Giảng viên' : 'Học viên') }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">Mật khẩu hiện tại <span class="text-danger">*</span></label>
+                            <input type="password" name="mat_khau_hien_tai" class="form-control rounded-3" placeholder="Nhập mật khẩu đang sử dụng" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">Mật khẩu mới <span class="text-danger">*</span></label>
+                            <input type="password" name="mat_khau_moi" class="form-control rounded-3" placeholder="Tối thiểu 6 ký tự" minlength="6" required>
+                        </div>
+
+                        <div class="mb-1">
+                            <label class="form-label fw-semibold text-dark text-sm">Xác nhận mật khẩu mới <span class="text-danger">*</span></label>
+                            <input type="password" name="mat_khau_moi_confirmation" class="form-control rounded-3" placeholder="Nhập lại mật khẩu mới" minlength="6" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 text-sm fw-semibold">
+                            <i class="fa-solid fa-lock me-1"></i> Cập nhật mật khẩu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endauth
+
     <!-- Global Alert Messages -->
     <div class="container mt-3">
         @if(session('success'))
@@ -337,6 +442,21 @@
             <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm d-flex align-items-center gap-2 rounded-3" role="alert">
                 <i class="fa-solid fa-triangle-exclamation fs-5"></i>
                 <div>{{ session('error') }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3" role="alert">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+                    <strong>Vui lòng kiểm tra lại thông tin:</strong>
+                </div>
+                <ul class="mb-0 ps-4 small">
+                    @foreach($errors->all() as $err)
+                        <li>{{ $err }}</li>
+                    @endforeach
+                </ul>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
@@ -413,9 +533,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @stack('scripts')
 
-    {{-- Trợ lý học tập AI Gemini (Floating Chatbot Widget) --}}
-    @auth
+    {{-- Trợ lý học tập AI Gemini (Floating Chatbot Widget - Chỉ hiển thị riêng cho Học viên) --}}
+    @if(Auth::check() && Auth::user()->id_phan_quyen == 3)
         @include('components.chatbot-widget')
-    @endauth
+    @endif
 </body>
 </html>

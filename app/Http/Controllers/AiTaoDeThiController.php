@@ -215,7 +215,9 @@ class AiTaoDeThiController extends Controller
             ]);
         }
 
-        return view('hoc_vien.ket_qua_thi', compact('diemSo', 'soCauDung', 'tongSoCau', 'chiTietKetQua'));
+        $deThi = DeThiTracNghiem::with('baiHoc.chuongMuc.khoaHoc')->find($deThiId);
+
+        return view('hoc_vien.ket_qua_thi', compact('diemSo', 'soCauDung', 'tongSoCau', 'chiTietKetQua', 'deThi', 'luotLamBai'));
     }
 
     /**
@@ -223,7 +225,7 @@ class AiTaoDeThiController extends Controller
      */
     public function xemKetQua($idLuotLamBai)
     {
-        $luotLamBai = LuotLamBaiThi::findOrFail($idLuotLamBai);
+        $luotLamBai = LuotLamBaiThi::with('deThi.baiHoc.chuongMuc.khoaHoc')->findOrFail($idLuotLamBai);
         $danhSachTraLoi = ChiTietCauTraLoi::where('id_luot_lam_bai', $luotLamBai->id_luot_lam_bai)->get();
 
         $chiTietKetQua = [];
@@ -250,8 +252,9 @@ class AiTaoDeThiController extends Controller
         $diemSo = $luotLamBai->tong_diem_dat_duoc;
         $soCauDung = $luotLamBai->so_cau_tra_loi_dung;
         $tongSoCau = $luotLamBai->tong_so_cau_hoi;
+        $deThi = $luotLamBai->deThi;
 
-        return view('hoc_vien.ket_qua_thi', compact('diemSo', 'soCauDung', 'tongSoCau', 'chiTietKetQua'));
+        return view('hoc_vien.ket_qua_thi', compact('diemSo', 'soCauDung', 'tongSoCau', 'chiTietKetQua', 'deThi', 'luotLamBai'));
     }
 }
 

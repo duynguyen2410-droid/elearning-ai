@@ -64,5 +64,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'quan_tri' => \App\Http\Middleware\KiemTraQuanTri::class,
+        'giang_vien' => \App\Http\Middleware\KiemTraGiangVien::class,
+        'hoc_vien' => \App\Http\Middleware\KiemTraHocVien::class,
     ];
 }

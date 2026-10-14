@@ -36,4 +36,27 @@ class DeThiTracNghiem extends Model
     {
         return $this->hasMany(CauHoiKiemTra::class, 'id_de_thi', 'id_de_thi')->orderBy('thu_tu_hien_thi', 'asc');
     }
+
+    // Alias hỗ trợ cauHoi
+    public function cauHoi()
+    {
+        return $this->danhSachCauHoi();
+    }
+
+    // Một đề thi có nhiều lượt làm bài thi của học viên
+    public function danhSachLuotLamBai()
+    {
+        return $this->hasMany(LuotLamBaiThi::class, 'id_de_thi', 'id_de_thi');
+    }
+
+    // Alias hỗ trợ luotLamBai và luotLamBaiThi
+    public function luotLamBai()
+    {
+        return $this->danhSachLuotLamBai();
+    }
+
+    public function luotLamBaiThi()
+    {
+        return $this->danhSachLuotLamBai();
+    }
 }

@@ -44,4 +44,27 @@ class KhoaHoc extends Model
     {
         return $this->hasMany(ChuongMucBaiHoc::class, 'id_khoa_hoc', 'id_khoa_hoc')->orderBy('thu_tu_sap_xep', 'asc');
     }
+
+    public function chuongMuc()
+    {
+        return $this->danhSachChuongMuc();
+    }
+
+    // Một khóa học có nhiều bài học (thông qua chương mục)
+    public function danhSachBaiHoc()
+    {
+        return $this->hasManyThrough(
+            ChiTietBaiHoc::class,
+            ChuongMucBaiHoc::class,
+            'id_khoa_hoc',
+            'id_chuong_muc',
+            'id_khoa_hoc',
+            'id_chuong_muc'
+        );
+    }
+
+    public function baiHoc()
+    {
+        return $this->danhSachBaiHoc();
+    }
 }

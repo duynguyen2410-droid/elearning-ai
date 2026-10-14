@@ -21,4 +21,16 @@ class LuotLamBaiThi extends Model
         'tong_diem_dat_duoc',
         'ket_qua_xep_loai',
     ];
+
+    // Thuộc về một đề thi
+    public function deThi()
+    {
+        return $this->belongsTo(DeThiTracNghiem::class, 'id_de_thi', 'id_de_thi');
+    }
+
+    // Thuộc về một học viên
+    public function hocVien()
+    {
+        return $this->belongsTo(User::class, 'id_hoc_vien', 'id_nguoi_dung');
+    }
 }

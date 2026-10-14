@@ -27,17 +27,22 @@ class KiemTraQuanTri
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bạn không có quyền truy cập vào trang quản trị!',
+                'message' => 'Bạn không có quyền truy cập vào khu vực Quản trị hệ thống!',
             ], 403);
         }
 
-        // 3. Nếu không phải Admin: Chuyển hướng người dùng về trang tổng quan học viên kèm thông báo lỗi
-        $targetRoute = Route::has('hoc_vien.tong_quan')
-            ? route('hoc_vien.tong_quan')
-            : (Route::has('student.dashboard') ? route('student.dashboard') : '/hoc-vien/tong-quan');
+        // 3. Nếu không phải Admin: Chuyển hướng theo đúng vai trò thực tế
+        if (Auth::check()) {
+            if ((int)Auth::user()->id_phan_quyen === 2) {
+                return redirect()->route('giang_vien.tong_quan')
+                    ->with('error', 'Khu vực này chỉ dành riêng cho Quản trị viên!');
+            }
+            return redirect()->route('hoc_vien.tong_quan')
+                ->with('error', 'Bạn không có quyền truy cập vào khu vực Quản trị hệ thống!');
+        }
 
-        return redirect($targetRoute)
-            ->with('error', 'Bạn không có quyền truy cập vào trang quản trị!');
+        return redirect()->route('login')
+            ->with('error', 'Vui lòng đăng nhập với tài khoản Quản trị viên!');
     }
 }
 

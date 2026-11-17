@@ -122,8 +122,8 @@ Route::middleware('auth')->group(function () {
 
         // Chuyên môn Đề thi AI (Tự soạn thủ công & AI sinh thông minh chống trùng)
         Route::post('/de-thi/tao-thu-cong', [GiangVienController::class, 'taoDeThiThuCong'])->name('de_thi.tao_thu_cong');
-        Route::post('/de-thi/sinh-ai', [GiangVienController::class, 'sinhDeThiAi'])->name('de_thi.sinh_ai_modal');
-        Route::post('/bai-hoc/{id}/sinh-de-thi-ai', [GiangVienController::class, 'sinhDeThiAi'])->name('de_thi.sinh_ai');
+        Route::post('/de-thi/sinh-ai', [GiangVienController::class, 'sinhDeThiAi'])->middleware('throttle:5,1')->name('de_thi.sinh_ai_modal');
+        Route::post('/bai-hoc/{id}/sinh-de-thi-ai', [GiangVienController::class, 'sinhDeThiAi'])->middleware('throttle:5,1')->name('de_thi.sinh_ai');
         Route::post('/cau-hoi/cap-nhat/{id}', [GiangVienController::class, 'capNhatCauHoi'])->name('cau_hoi.cap_nhat');
         Route::delete('/de-thi/xoa/{id}', [GiangVienController::class, 'xoaDeThi'])->name('de_thi.xoa');
 
@@ -165,13 +165,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/ket-qua/{id}', [AiTaoDeThiController::class, 'xemKetQua'])->name('dethi.ketqua');
         Route::get('/ket-qua-thi/{id}', [AiTaoDeThiController::class, 'xemKetQua'])->name('hoc_vien.ket_qua_thi');
 
-        // AI Tạo câu hỏi trắc nghiệm tự động
-        Route::post('/bai-hoc/{id}/ai-tao-cau-hoi', [AiTaoDeThiController::class, 'generateQuiz'])->name('baihoc.ai-tao-cau-hoi');
-        Route::post('/hoc-vien/bai-hoc/{id}/sinh-de-thi-ai', [AiTaoDeThiController::class, 'generateQuiz'])->name('hoc_vien.sinh_de_thi_ai');
-        Route::post('/hoc-vien/sinh-de-thi-ai/{id}', [AiTaoDeThiController::class, 'generateQuiz']);
+        // AI Tạo câu hỏi trắc nghiệm tự động (Throttle 5 requests / phút)
+        Route::post('/bai-hoc/{id}/ai-tao-cau-hoi', [AiTaoDeThiController::class, 'generateQuiz'])->middleware('throttle:5,1')->name('baihoc.ai-tao-cau-hoi');
+        Route::post('/hoc-vien/bai-hoc/{id}/sinh-de-thi-ai', [AiTaoDeThiController::class, 'generateQuiz'])->middleware('throttle:5,1')->name('hoc_vien.sinh_de_thi_ai');
+        Route::post('/hoc-vien/sinh-de-thi-ai/{id}', [AiTaoDeThiController::class, 'generateQuiz'])->middleware('throttle:5,1');
 
-        // Trợ lý học tập AI Gemini
-        Route::post('/tro-ly-ai/hoi-dap', [TroLyAiController::class, 'ask']);
+        // Trợ lý học tập AI Gemini (Throttle 10 requests / phút)
+        Route::post('/tro-ly-ai/hoi-dap', [TroLyAiController::class, 'ask'])->middleware('throttle:10,1');
     });
 
     // Chuyển hướng tương thích cho URL học viên cũ
@@ -186,11 +186,11 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('quiz.take', $id);
     });
     Route::post('/de-thi/{id}/nop-bai', [AiTaoDeThiController::class, 'nopBai']);
-    Route::post('/bai-hoc/{id}/ai-tao-cau-hoi', [AiTaoDeThiController::class, 'generateQuiz']);
+    Route::post('/bai-hoc/{id}/ai-tao-cau-hoi', [AiTaoDeThiController::class, 'generateQuiz'])->middleware('throttle:5,1');
 
     // ==========================================
-    // 5. Trợ lý AI (Chatbot)
+    // 5. Trợ lý AI (Chatbot - Throttle 10 requests / phút)
     // ==========================================
-    Route::post('/tro-ly-ai/hoi-dap', [TroLyAiController::class, 'ask'])->name('chatbot.ask');
-    Route::post('/chatbot/ask', [TroLyAiController::class, 'ask']);
+    Route::post('/tro-ly-ai/hoi-dap', [TroLyAiController::class, 'ask'])->middleware('throttle:10,1')->name('chatbot.ask');
+    Route::post('/chatbot/ask', [TroLyAiController::class, 'ask'])->middleware('throttle:10,1');
 });

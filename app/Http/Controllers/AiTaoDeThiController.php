@@ -10,6 +10,7 @@ use App\Models\CauHoiKiemTra;
 use App\Models\PhuongAnLuaChon;
 use App\Models\LuotLamBaiThi;
 use App\Models\ChiTietCauTraLoi;
+use App\Services\GeminiService;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -76,121 +77,31 @@ class AiTaoDeThiController extends Controller
                 ? strip_tags($baiHoc->noi_dung_bai_hoc_chi_tiet)
                 : $baiHoc->tieu_de_bai_hoc);
 
-        $apiKey = env('GEMINI_API_KEY');
-        $questionsData = [];
+        $prompt = "Bạn là chuyên gia sư phạm và biên soạn đề thi trắc nghiệm AI cho nền tảng e-learning EduMind AI.\n"
+            . "Dựa trên bài học: '{$baiHoc->tieu_de_bai_hoc}' và tóm tắt kiến thức: '{$contextText}'.\n"
+            . "Hãy tạo ĐÚNG {$soLuong} câu hỏi trắc nghiệm khách quan mới chất lượng cao nhằm đánh giá hiểu biết của học viên.\n"
+            . "{$chongTrungText}\n"
+            . "Yêu cầu kỹ thuật bắt buộc:\n"
+            . "- Mỗi câu hỏi gồm đúng 4 phương án (A, B, C, D) và chỉ có 1 phương án chính xác.\n"
+            . "- Giá trị 'muc_do_kho' điền một trong: 'de', 'trung_binh', 'kho'.\n"
+            . "- Trả về DUY NHẤT một mảng JSON thuần túy (không kèm markdown ```json hay bất kỳ văn bản nào khác ngoài JSON), theo mẫu sau:\n"
+            . "[\n"
+            . "  {\n"
+            . "    \"noi_dung_cau_hoi\": \"Nội dung câu hỏi...\",\n"
+            . "    \"giai_thich\": \"Giải thích ngắn gọn vì sao đáp án này đúng...\",\n"
+            . "    \"muc_do_kho\": \"trung_binh\",\n"
+            . "    \"phuong_an\": [\n"
+            . "      {\"ky_tu\": \"A\", \"noi_dung\": \"...\", \"dung\": 1},\n"
+            . "      {\"ky_tu\": \"B\", \"noi_dung\": \"...\", \"dung\": 0},\n"
+            . "      {\"ky_tu\": \"C\", \"noi_dung\": \"...\", \"dung\": 0},\n"
+            . "      {\"ky_tu\": \"D\", \"noi_dung\": \"...\", \"dung\": 0}\n"
+            . "    ]\n"
+            . "  }\n"
+            . "]";
 
-        // 4. Gọi Google Gemini API để sinh đề thi
-        if ($apiKey) {
-            set_time_limit(120);
-            $prompt = "Bạn là chuyên gia sư phạm và biên soạn đề thi trắc nghiệm AI cho nền tảng e-learning EduMind AI.\n"
-                . "Dựa trên bài học: '{$baiHoc->tieu_de_bai_hoc}' và tóm tắt kiến thức: '{$contextText}'.\n"
-                . "Hãy tạo ĐÚNG {$soLuong} câu hỏi trắc nghiệm khách quan mới chất lượng cao nhằm đánh giá hiểu biết của học viên.\n"
-                . "{$chongTrungText}\n"
-                . "Yêu cầu kỹ thuật bắt buộc:\n"
-                . "- Mỗi câu hỏi gồm đúng 4 phương án (A, B, C, D) và chỉ có 1 phương án chính xác.\n"
-                . "- Giá trị 'muc_do_kho' điền một trong: 'de', 'trung_binh', 'kho'.\n"
-                . "- Trả về DUY NHẤT một mảng JSON thuần túy (không kèm markdown ```json hay bất kỳ văn bản nào khác ngoài JSON), theo mẫu sau:\n"
-                . "[\n"
-                . "  {\n"
-                . "    \"noi_dung_cau_hoi\": \"Nội dung câu hỏi...\",\n"
-                . "    \"giai_thich\": \"Giải thích ngắn gọn vì sao đáp án này đúng...\",\n"
-                . "    \"muc_do_kho\": \"trung_binh\",\n"
-                . "    \"phuong_an\": [\n"
-                . "      {\"ky_tu\": \"A\", \"noi_dung\": \"...\", \"dung\": 1},\n"
-                . "      {\"ky_tu\": \"B\", \"noi_dung\": \"...\", \"dung\": 0},\n"
-                . "      {\"ky_tu\": \"C\", \"noi_dung\": \"...\", \"dung\": 0},\n"
-                . "      {\"ky_tu\": \"D\", \"noi_dung\": \"...\", \"dung\": 0}\n"
-                . "    ]\n"
-                . "  }\n"
-                . "]";
-
-            $models = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
-
-            foreach ($models as $modelName) {
-                try {
-                    $response = Http::timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}", [
-                        'contents' => [
-                            [
-                                'parts' => [
-                                    ['text' => $prompt]
-                                ]
-                            ]
-                        ],
-                        'generationConfig' => [
-                            'temperature' => 0.7,
-                        ]
-                    ]);
-
-                    if ($response->successful()) {
-                        $resData = $response->json();
-                        $rawText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                        $cleanJson = preg_replace('/```(json)?|```/', '', $rawText);
-                        $parsed = json_decode(trim($cleanJson), true);
-
-                        if (is_array($parsed)) {
-                            // Nếu Gemini bọc mảng câu hỏi trong object key (questions, danh_sach, data...)
-                            if (!isset($parsed[0])) {
-                                foreach (['questions', 'danh_sach_cau_hoi', 'danh_sach', 'quiz', 'data', 'cau_hoi'] as $wrapKey) {
-                                    if (isset($parsed[$wrapKey]) && is_array($parsed[$wrapKey])) {
-                                        $parsed = $parsed[$wrapKey];
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Nếu là 1 object câu hỏi đơn lẻ
-                            if (is_array($parsed) && (isset($parsed['noi_dung_cau_hoi']) || isset($parsed['cau_hoi']) || isset($parsed['question']))) {
-                                $parsed = [$parsed];
-                            }
-
-                            if (is_array($parsed) && count($parsed) > 0) {
-                                $normalized = [];
-                                $kyTuDefault = ['A', 'B', 'C', 'D'];
-
-                                foreach ($parsed as $item) {
-                                    if (!is_array($item)) continue;
-                                    $content = $item['noi_dung_cau_hoi'] ?? $item['cau_hoi'] ?? $item['question'] ?? $item['noi_dung'] ?? null;
-                                    $options = $item['phuong_an'] ?? $item['dap_an'] ?? $item['options'] ?? $item['choices'] ?? null;
-
-                                    if ($content && is_array($options) && count($options) >= 2) {
-                                        $normalizedOptions = [];
-                                        foreach (array_values($options) as $optIdx => $opt) {
-                                            if (is_string($opt)) {
-                                                $normalizedOptions[] = [
-                                                    'ky_tu' => $kyTuDefault[$optIdx] ?? chr(65 + $optIdx),
-                                                    'noi_dung' => $opt,
-                                                    'dung' => ($optIdx === 0) ? 1 : 0
-                                                ];
-                                            } elseif (is_array($opt)) {
-                                                $normalizedOptions[] = [
-                                                    'ky_tu' => $opt['ky_tu'] ?? $opt['key'] ?? ($kyTuDefault[$optIdx] ?? chr(65 + $optIdx)),
-                                                    'noi_dung' => $opt['noi_dung'] ?? $opt['text'] ?? $opt['content'] ?? '',
-                                                    'dung' => (!empty($opt['dung']) || !empty($opt['is_correct']) || !empty($opt['correct'])) ? 1 : 0
-                                                ];
-                                            }
-                                        }
-
-                                        $normalized[] = [
-                                            'noi_dung_cau_hoi' => $content,
-                                            'giai_thich' => $item['giai_thich'] ?? $item['explanation'] ?? 'Đáp án chính xác theo nội dung bài học.',
-                                            'muc_do_kho' => $item['muc_do_kho'] ?? 'trung_binh',
-                                            'phuong_an' => $normalizedOptions,
-                                        ];
-                                    }
-                                }
-
-                                if (count($normalized) > 0) {
-                                    $questionsData = array_slice($normalized, 0, $soLuong);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Thử model kế tiếp
-                }
-            }
-        }
+        // 4. Gọi GeminiService tập trung để sinh câu hỏi
+        $geminiService = app(GeminiService::class);
+        $questionsData = $geminiService->generateQuizQuestions($prompt, $soLuong);
 
         // 5. Fallback câu hỏi chất lượng cao nếu Gemini API bận hoặc chưa có phản hồi
         if (empty($questionsData)) {

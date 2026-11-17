@@ -19,6 +19,7 @@ use App\Models\PhuongAnLuaChon;
 use App\Models\LuotLamBaiThi;
 use App\Models\ChiTietCauTraLoi;
 use App\Models\GhiDanhKhoaHoc;
+use App\Services\GeminiService;
 
 class GiangVienController extends Controller
 {
@@ -625,68 +626,32 @@ class GiangVienController extends Controller
         }
 
         $contextText = $baiHoc->tom_tat_kien_thuc_cho_ai ?: ($baiHoc->noi_dung_bai_hoc_chi_tiet ?: $baiHoc->tieu_de_bai_hoc);
-        $apiKey = env('GEMINI_API_KEY');
+        $prompt = "Bạn là chuyên gia sư phạm và biên soạn đề kiểm tra trắc nghiệm cho nền tảng e-learning.\n"
+            . "Dựa trên nội dung bài học: '{$baiHoc->tieu_de_bai_hoc}' và tóm tắt kiến thức: '{$contextText}'.\n"
+            . "Hãy tạo ĐÚNG {$soLuong} câu hỏi trắc nghiệm khách quan mới chất lượng cao nhằm đánh giá hiểu biết của học viên.\n"
+            . "{$doKhoMoTa}\n"
+            . "{$chongTrungText}\n"
+            . "Yêu cầu kỹ thuật bắt buộc:\n"
+            . "- Mỗi câu hỏi gồm đúng 4 phương án (A, B, C, D) và chỉ có 1 phương án chính xác.\n"
+            . "- Giá trị 'muc_do_kho' điền một trong: 'de', 'trung_binh', 'kho'.\n"
+            . "- Trả về DUY NHẤT một mảng JSON thuần túy (không kèm markdown ```json hay bất kỳ văn bản nào khác ngoài JSON), theo mẫu sau:\n"
+            . "[\n"
+            . "  {\n"
+            . "    \"noi_dung_cau_hoi\": \"Nội dung câu hỏi...\",\n"
+            . "    \"giai_thich\": \"Giải thích ngắn gọn vì sao đáp án này đúng...\",\n"
+            . "    \"muc_do_kho\": \"trung_binh\",\n"
+            . "    \"phuong_an\": [\n"
+            . "      {\"ky_tu\": \"A\", \"noi_dung\": \"...\", \"dung\": 1},\n"
+            . "      {\"ky_tu\": \"B\", \"noi_dung\": \"...\", \"dung\": 0},\n"
+            . "      {\"ky_tu\": \"C\", \"noi_dung\": \"...\", \"dung\": 0},\n"
+            . "      {\"ky_tu\": \"D\", \"noi_dung\": \"...\", \"dung\": 0}\n"
+            . "    ]\n"
+            . "  }\n"
+            . "]";
 
-        $questionsData = [];
-
-        if ($apiKey) {
-            set_time_limit(90);
-            $prompt = "Bạn là chuyên gia sư phạm và biên soạn đề kiểm tra trắc nghiệm cho nền tảng e-learning.\n"
-                . "Dựa trên nội dung bài học: '{$baiHoc->tieu_de_bai_hoc}' và tóm tắt kiến thức: '{$contextText}'.\n"
-                . "Hãy tạo ĐÚNG {$soLuong} câu hỏi trắc nghiệm khách quan mới chất lượng cao nhằm đánh giá hiểu biết của học viên.\n"
-                . "{$doKhoMoTa}\n"
-                . "{$chongTrungText}\n"
-                . "Yêu cầu kỹ thuật bắt buộc:\n"
-                . "- Mỗi câu hỏi gồm đúng 4 phương án (A, B, C, D) và chỉ có 1 phương án chính xác.\n"
-                . "- Giá trị 'muc_do_kho' điền một trong: 'de', 'trung_binh', 'kho'.\n"
-                . "- Trả về DUY NHẤT một mảng JSON thuần túy (không kèm markdown ```json hay bất kỳ văn bản nào khác ngoài JSON), theo mẫu sau:\n"
-                . "[\n"
-                . "  {\n"
-                . "    \"noi_dung_cau_hoi\": \"Nội dung câu hỏi...\",\n"
-                . "    \"giai_thich\": \"Giải thích ngắn gọn vì sao đáp án này đúng...\",\n"
-                . "    \"muc_do_kho\": \"trung_binh\",\n"
-                . "    \"phuong_an\": [\n"
-                . "      {\"ky_tu\": \"A\", \"noi_dung\": \"...\", \"dung\": 1},\n"
-                . "      {\"ky_tu\": \"B\", \"noi_dung\": \"...\", \"dung\": 0},\n"
-                . "      {\"ky_tu\": \"C\", \"noi_dung\": \"...\", \"dung\": 0},\n"
-                . "      {\"ky_tu\": \"D\", \"noi_dung\": \"...\", \"dung\": 0}\n"
-                . "    ]\n"
-                . "  }\n"
-                . "]";
-
-            $models = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
-
-            foreach ($models as $modelName) {
-                try {
-                    $response = Http::timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}", [
-                        'contents' => [
-                            [
-                                'parts' => [
-                                    ['text' => $prompt]
-                                ]
-                            ]
-                        ],
-                        'generationConfig' => [
-                            'temperature' => 0.7,
-                        ]
-                    ]);
-
-                    if ($response->successful()) {
-                        $resData = $response->json();
-                        $rawText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                        $cleanJson = preg_replace('/```(json)?|```/', '', $rawText);
-                        $parsed = json_decode(trim($cleanJson), true);
-
-                        if (is_array($parsed) && count($parsed) > 0 && isset($parsed[0]['noi_dung_cau_hoi'])) {
-                            $questionsData = array_slice($parsed, 0, $soLuong);
-                            break;
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Thử model kế tiếp
-                }
-            }
-        }
+        // 4. Gọi GeminiService tập trung để sinh câu hỏi
+        $geminiService = app(GeminiService::class);
+        $questionsData = $geminiService->generateQuizQuestions($prompt, $soLuong);
 
         // Fallback chất lượng cao nếu Gemini API bận hoặc chưa có API Key
         if (empty($questionsData)) {

@@ -24,7 +24,7 @@
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 1.25rem;
-        padding: 1.5rem 1.25rem;
+        padding: 1.25rem 1rem;
         box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.04);
         position: sticky;
         top: 90px;
@@ -75,10 +75,10 @@
     .admin-nav-pills .nav-link {
         display: flex;
         align-items: center;
-        padding: 0.8rem 1rem;
+        padding: 0.75rem 0.85rem;
         border-radius: 0.85rem;
         font-weight: 600;
-        font-size: 0.92rem;
+        font-size: 0.88rem;
         color: #475569;
         transition: all 0.2s ease;
         border: 1px solid transparent;
@@ -302,13 +302,13 @@
      KHUNG CHÍNH: BỐ CỤC 2 CỘT (SIDEBAR DỌC + TABS NỘI DUNG)
 ══════════════════════════════════════════════════════════════ --}}
 <div class="admin-wrapper">
-    <div class="container-xxl px-3 px-lg-4">
+    <div class="container-fluid px-4 px-lg-5">
         <div class="row g-4">
 
             {{-- ──────────────────────────────────────────
-                 CỘT TRÁI: MENU DỌC (SIDEBAR - 260px)
+                 CỘT TRÁI: MENU DỌC (SIDEBAR - col-lg-2)
             ────────────────────────────────────────── --}}
-            <div class="col-lg-3 col-xl-3">
+            <div class="col-lg-2">
                 <div class="admin-sidebar-card">
 
                     {{-- Profile Snippet --}}
@@ -399,6 +399,29 @@
                                 {{ $tongLuotThi }}
                             </span>
                         </button>
+
+                        {{-- Tab 5: Duyệt đăng ký học viên --}}
+                        <button class="nav-link {{ $activeTab === 'duyet-hoc-vien' ? 'active' : '' }}" 
+                                id="btn-tab-duyet-hoc-vien" 
+                                data-bs-toggle="pill" 
+                                data-bs-target="#pane-tab-duyet-hoc-vien" 
+                                type="button" 
+                                role="tab" 
+                                aria-controls="pane-tab-duyet-hoc-vien" 
+                                aria-selected="{{ $activeTab === 'duyet-hoc-vien' ? 'true' : 'false' }}"
+                                onclick="updateTabUrl('duyet-hoc-vien')">
+                            <i class="fa-solid fa-user-check me-2.5 text-danger fs-6"></i>
+                            <span>Duyệt đăng ký</span>
+                            @if(isset($soLuongChoDuyet) && $soLuongChoDuyet > 0)
+                                <span class="badge rounded-pill ms-auto bg-danger text-white text-xs px-2 py-0.5">
+                                    {{ $soLuongChoDuyet }}
+                                </span>
+                            @else
+                                <span class="badge rounded-pill ms-auto bg-light text-muted border text-xs">
+                                    0
+                                </span>
+                            @endif
+                        </button>
                     </div>
 
                     <hr class="my-3 text-muted opacity-25">
@@ -419,9 +442,9 @@
             </div>
 
             {{-- ──────────────────────────────────────────
-                 CỘT PHẢI: NỘI DUNG HIỂN THỊ (TABS - col-lg-9)
+                 CỘT PHẢI: NỘI DUNG HIỂN THỊ (TABS - col-lg-10)
             ────────────────────────────────────────── --}}
-            <div class="col-lg-9 col-xl-9">
+            <div class="col-lg-10">
                 <div class="tab-content" id="instructorMenuTabContent">
 
                     {{-- ══════════════════════════════════════════════════════
@@ -652,9 +675,13 @@
                             <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
                                 <div class="card-header bg-white p-3.5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-bottom">
                                     <div class="d-flex align-items-start gap-3">
-                                        <div class="rounded-3 p-3 bg-primary-subtle text-primary fs-4 flex-shrink-0">
-                                            <i class="fa-solid fa-graduation-cap"></i>
-                                        </div>
+                                        @if($kh->hinh_anh && file_exists(public_path($kh->hinh_anh)))
+                                            <img src="{{ asset($kh->hinh_anh) }}" alt="{{ $kh->tieu_de_khoa_hoc }}" class="rounded-3 flex-shrink-0 shadow-xs border" style="width: 52px; height: 52px; object-fit: cover;">
+                                        @else
+                                            <div class="rounded-3 p-3 bg-primary-subtle text-primary fs-4 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                                                <i class="fa-solid fa-graduation-cap"></i>
+                                            </div>
+                                        @endif
                                         <div>
                                             <h5 class="fw-bold text-dark text-break text-wrap mb-1">
                                                 {{ $kh->tieu_de_khoa_hoc }}
@@ -675,6 +702,15 @@
                                                 <span class="badge {{ ($kh->trang_thai_xuat_ban === 'tam_an' || $kh->trang_thai_xuat_ban === 'ban_nhap') ? 'bg-secondary-subtle text-secondary border border-secondary-subtle' : 'bg-success-subtle text-success border border-success-subtle' }} rounded-pill">
                                                     {{ ($kh->trang_thai_xuat_ban === 'tam_an' || $kh->trang_thai_xuat_ban === 'ban_nhap') ? 'Tạm ẩn' : 'Đang mở lớp' }}
                                                 </span>
+                                                @if((int)($kh->trang_thai_mo_dang_ky ?? 1) === 1)
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
+                                                        <i class="fa-solid fa-door-open me-1"></i> Mở đăng ký
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill">
+                                                        <i class="fa-solid fa-lock me-1"></i> Đóng đăng ký
+                                                    </span>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -721,7 +757,7 @@
                                                             <th>Tiêu đề bài học</th>
                                                             <th>Thời lượng</th>
                                                             <th>Đề trắc nghiệm</th>
-                                                            <th class="text-end pe-3" style="width: 130px;">Thao tác</th>
+                                                            <th class="text-center" style="width: 140px;">Thao tác</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -729,8 +765,11 @@
                                                             <tr>
                                                                 <td class="ps-3 text-muted fw-semibold">{{ $bIndex + 1 }}</td>
                                                                 <td>
-                                                                    <div class="fw-bold text-dark text-break text-wrap mb-0.5">
-                                                                        {{ $bh->tieu_de_bai_hoc }}
+                                                                    <div class="fw-bold text-break text-wrap mb-0.5">
+                                                                        <a href="javascript:void(0)" class="text-dark text-decoration-none hover-primary d-inline-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#modalXemChiTietBaiHoc_{{ $bh->id_chi_tiet_bai_hoc }}" title="Xem chi tiết bài học">
+                                                                            <span>{{ $bh->tieu_de_bai_hoc }}</span>
+                                                                            <i class="fa-solid fa-arrow-up-right-from-square text-xs text-primary opacity-75"></i>
+                                                                        </a>
                                                                     </div>
                                                                     @if (!empty($bh->tom_tat_kien_thuc_cho_ai))
                                                                         <div class="text-muted text-xs text-truncate" style="max-width: 320px;" title="{{ $bh->tom_tat_kien_thuc_cho_ai }}">
@@ -740,7 +779,7 @@
                                                                 </td>
                                                                 <td>
                                                                     <span class="badge-quiz-stat">
-                                                                        <i class="fa-regular fa-clock text-muted"></i> {{ round(($bh->thoi_luong_video_giay ?? 600) / 60) }} phút
+                                                                        <i class="fa-regular fa-clock text-muted"></i> {{ $bh->thoi_luong_hien_thi }}
                                                                     </span>
                                                                 </td>
                                                                 <td>
@@ -761,25 +800,23 @@
                                                                         </div>
                                                                     @endif
                                                                 </td>
-                                                                <td class="text-end pe-3">
-                                                                    <div class="d-inline-flex align-items-center gap-1.5">
-                                                                        {{-- Nút xem video nhanh qua Modal --}}
-                                                                        @if ($bh->duong_dan_video_bai_giang)
-                                                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalPreviewVideo{{ $bh->id_bai_hoc }}" title="Xem video bài giảng ngay tại đây">
-                                                                                <i class="fa-solid fa-circle-play text-xs"></i>
-                                                                            </button>
-                                                                        @endif
+                                                                <td class="text-center">
+                                                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                                                        {{-- Nút xem bài học / video qua Modal --}}
+                                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalXemChiTietBaiHoc_{{ $bh->id_chi_tiet_bai_hoc }}" title="Xem bài học / video">
+                                                                            <i class="fa-solid fa-circle-play text-xs"></i>
+                                                                        </button>
 
-                                                                        {{-- Nút mở toàn trang bài học (giao diện học viên) --}}
-                                                                        <a href="{{ route('student.lesson.show', $bh->id_bai_hoc) }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1" title="Xem trước giao diện bài học (Trang học viên)">
-                                                                            <i class="fa-solid fa-eye text-xs"></i>
-                                                                        </a>
+                                                                        {{-- Nút sửa bài học --}}
+                                                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-2 px-2 py-1 text-dark" data-bs-toggle="modal" data-bs-target="#modalSuaBaiHoc_{{ $bh->id_chi_tiet_bai_hoc }}" title="Chỉnh sửa bài học">
+                                                                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                                                        </button>
 
                                                                         {{-- Nút xóa bài học --}}
-                                                                        <form action="{{ route('giang_vien.bai_hoc.xoa', $bh->id_bai_hoc) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa bài học \'{{ $bh->tieu_de_bai_hoc }}\'?');" class="m-0">
+                                                                        <form action="{{ route('giang_vien.bai_hoc.xoa', $bh->id_bai_hoc) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa bài học \'{{ $bh->tieu_de_bai_hoc }}\'?');" class="m-0 d-inline-block">
                                                                             @csrf
                                                                             @method('DELETE')
-                                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa bài học">
+                                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" title="Xóa bài học">
                                                                                 <i class="fa-solid fa-trash-can text-xs"></i>
                                                                             </button>
                                                                         </form>
@@ -920,7 +957,7 @@
                                             <th>Thời lượng</th>
                                             <th>Số câu</th>
                                             <th>Lượt thi</th>
-                                            <th class="text-end pe-4" style="width: 170px;">Thao tác</th>
+                                            <th class="text-center" style="width: 170px;">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -945,7 +982,7 @@
                                                 </td>
                                                 <td>
                                                     <span class="badge-quiz-stat">
-                                                        <i class="fa-regular fa-clock text-muted"></i> {{ $dt->thoi_luong_lam_bai_phut ?? 15 }} phút
+                                                        <i class="fa-regular fa-clock text-muted"></i> {{ $dt->thoi_gian_lam_bai ?? $dt->thoi_luong_lam_bai_phut ?? 15 }} phút
                                                     </span>
                                                 </td>
                                                 <td>
@@ -958,23 +995,23 @@
                                                         <i class="fa-solid fa-user-check text-success"></i> {{ $dt->danh_sach_luot_lam_bai_count ?? $dt->danhSachLuotLamBai->count() }} lượt
                                                     </span>
                                                 </td>
-                                                <td class="text-end pe-4">
-                                                    <div class="d-inline-flex align-items-center gap-1.5">
-                                                        {{-- Nút Xem & Sửa câu hỏi (Modal) --}}
-                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalSuaDeThi{{ $dt->id_de_thi }}" title="Xem và sửa câu hỏi / đáp án">
-                                                            <i class="fa-solid fa-pen-to-square text-xs"></i> Sửa
+                                                <td class="text-center">
+                                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                                        {{-- Nút Chỉnh sửa đề thi (Modal) --}}
+                                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-2 px-2 py-1 text-dark" data-bs-toggle="modal" data-bs-target="#modalSuaDeThi{{ $dt->id_de_thi }}" title="Chỉnh sửa đề thi">
+                                                            <i class="fa-solid fa-pen-to-square text-xs"></i>
                                                         </button>
 
                                                         {{-- Nút Thi thử --}}
-                                                        <a href="{{ route('quiz.take', $dt->id_de_thi) }}" target="_blank" class="btn btn-sm btn-outline-success rounded-3 px-2 py-1" title="Vào thi thử nghiệm">
+                                                        <a href="{{ route('hoc_vien.lam_bai_thi', $dt->id_de_thi_trac_nghiem) }}" target="_blank" class="btn btn-sm btn-outline-success rounded-2 px-2 py-1" title="Thi thử đề này">
                                                             <i class="fa-solid fa-play text-xs"></i>
                                                         </a>
 
                                                         {{-- Nút Xóa đề thi --}}
-                                                        <form action="{{ route('giang_vien.de_thi.xoa', $dt->id_de_thi) }}" method="POST" onsubmit="return confirm('CẢNH BÁO: Xóa đề thi này sẽ xóa toàn bộ câu hỏi và kết quả thi của học viên. Bạn có chắc chắn?');" class="m-0">
+                                                        <form action="{{ route('giang_vien.de_thi.xoa', $dt->id_de_thi) }}" method="POST" onsubmit="return confirm('CẢNH BÁO: Xóa đề thi này sẽ xóa toàn bộ câu hỏi và kết quả thi của học viên. Bạn có chắc chắn?');" class="m-0 d-inline-block">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa đề thi">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" title="Xóa đề thi">
                                                                 <i class="fa-solid fa-trash-can text-xs"></i>
                                                             </button>
                                                         </form>
@@ -1104,6 +1141,139 @@
 
                     </div>
 
+                    {{-- ══════════════════════════════════════════════════════
+                         TAB 5: DUYỆT ĐĂNG KÝ HỌC VIÊN
+                    ══════════════════════════════════════════════════════ --}}
+                    <div class="tab-pane fade {{ $activeTab === 'duyet-hoc-vien' ? 'show active' : '' }}" 
+                         id="pane-tab-duyet-hoc-vien" 
+                         role="tabpanel" 
+                         aria-labelledby="btn-tab-duyet-hoc-vien">
+
+                        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                            <div>
+                                <h4 class="fw-bold text-dark mb-1">
+                                    <i class="fa-solid fa-user-check text-danger me-2"></i> Duyệt Đăng Ký Khóa Học
+                                </h4>
+                                <p class="text-muted small mb-0">Kiểm duyệt danh sách học viên đăng ký tham gia các khóa học do bạn phụ trách giảng dạy.</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge-header-indigo">
+                                    <i class="fa-solid fa-hourglass-half me-1.5 text-warning"></i>
+                                    Chờ duyệt: {{ $soLuongChoDuyet ?? 0 }}
+                                </span>
+                                <span class="badge-header-emerald">
+                                    <i class="fa-solid fa-users me-1.5"></i>
+                                    Tổng yêu cầu: {{ isset($danhSachYeuCauDangKy) ? $danhSachYeuCauDangKy->count() : 0 }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Bảng danh sách yêu cầu đăng ký --}}
+                        <div class="card-panel">
+                            <div class="card-panel-header">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-3 p-2 bg-danger-subtle text-danger">
+                                        <i class="fa-solid fa-clipboard-check"></i>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-0">Danh Sách Yêu Cầu Ghi Danh Khóa Học</h6>
+                                </div>
+                                <span class="badge bg-light text-muted border text-xs">
+                                    Tự động làm mới khi phê duyệt
+                                </span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light text-muted text-xs text-uppercase fw-semibold">
+                                        <tr>
+                                            <th class="ps-4" style="width: 50px;">STT</th>
+                                            <th>Học viên</th>
+                                            <th>Khóa học đăng ký</th>
+                                            <th>Ngày gửi yêu cầu</th>
+                                            <th class="text-center">Trạng thái</th>
+                                            <th class="text-center pe-4" style="width: 220px;">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($danhSachYeuCauDangKy ?? [] as $indexYc => $yc)
+                                            <tr>
+                                                <td class="ps-4 text-muted fw-semibold text-xs">{{ $indexYc + 1 }}</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2.5">
+                                                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 34px; height: 34px; background: linear-gradient(135deg, #0284c7, #2563eb); font-size: 0.85rem; flex-shrink: 0;">
+                                                            {{ mb_substr($yc->hocVien->ho_va_ten ?? 'H', 0, 1) }}
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-bold text-dark text-xs">{{ $yc->hocVien->ho_va_ten ?? 'Học viên' }}</div>
+                                                            <div class="text-muted text-xs font-monospace">{{ $yc->hocVien->dia_chi_email ?? '' }}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-semibold text-dark text-xs text-break text-wrap">
+                                                        {{ $yc->khoaHoc->tieu_de_khoa_hoc ?? 'Khóa học' }}
+                                                    </div>
+                                                    <div class="text-muted text-xs">
+                                                        Mã khóa học: #{{ $yc->khoaHoc->id_khoa_hoc ?? '' }}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="text-xs text-muted">
+                                                        <i class="fa-regular fa-clock me-1"></i>
+                                                        {{ $yc->ngay_ghi_danh ? \Carbon\Carbon::parse($yc->ngay_ghi_danh)->format('H:i - d/m/Y') : 'Chưa xác định' }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    @if ((int)$yc->trang_thai_duyet === 1)
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                            <i class="fa-solid fa-circle-check me-1"></i> Đã phê duyệt
+                                                        </span>
+                                                    @elseif ((int)$yc->trang_thai_duyet === 2)
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                            <i class="fa-solid fa-circle-xmark me-1"></i> Đã từ chối
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                            <i class="fa-solid fa-hourglass-half me-1"></i> Chờ duyệt
+                                                        </span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-center pe-4">
+                                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                                        @if ((int)$yc->trang_thai_duyet !== 1)
+                                                            <form action="{{ route('giang_vien.duyet_hoc_vien', $yc->id_ghi_danh) }}" method="POST" class="d-inline">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-sm btn-success rounded-2 px-2.5 py-1 fw-semibold text-xs shadow-xs" title="Phê duyệt cho học viên vào học">
+                                                                    <i class="fa-solid fa-check me-1"></i> Phê duyệt
+                                                                </button>
+                                                            </form>
+                                                        @endif
+
+                                                        @if ((int)$yc->trang_thai_duyet !== 2)
+                                                            <form action="{{ route('giang_vien.tu_choi_hoc_vien', $yc->id_ghi_danh) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn từ chối yêu cầu đăng ký của học viên này không?');">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2.5 py-1 text-xs" title="Từ chối yêu cầu đăng ký">
+                                                                    <i class="fa-solid fa-xmark me-1"></i> Từ chối
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center py-5 text-muted">
+                                                    <i class="fa-regular fa-folder-open fs-2 text-secondary mb-2 d-block opacity-50"></i>
+                                                    <span class="small">Hiện chưa có yêu cầu đăng ký khóa học nào từ học viên.</span>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
 
@@ -1125,12 +1295,17 @@
                 </h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('giang_vien.khoa_hoc.them') }}" method="POST">
+            <form action="{{ route('giang_vien.khoa_hoc.them') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark text-sm">Tên khóa học <span class="text-danger">*</span></label>
                         <input type="text" name="tieu_de_khoa_hoc" class="form-control rounded-3" placeholder="Ví dụ: Khóa học Lập trình Flutter & AI Assistant" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Hình ảnh đại diện khóa học</label>
+                        <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                        <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB)</small>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
@@ -1159,6 +1334,15 @@
                             <option value="chuyen_sau">Nâng cao / Chuyên sâu</option>
                         </select>
                     </div>
+                    <div class="mt-3 p-3 bg-light rounded-3 border">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switchMoDangKyThem" name="trang_thai_mo_dang_ky" value="1" checked>
+                            <label class="form-check-label fw-semibold text-dark text-sm" for="switchMoDangKyThem">
+                                Cho phép học viên đăng ký khóa học này
+                            </label>
+                        </div>
+                        <div class="text-muted text-xs ms-1">Khi bật, khóa học sẽ xuất hiện trên danh sách của Học viên và cho phép gửi yêu cầu tham gia lớp học.</div>
+                    </div>
                 </div>
                 <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Hủy</button>
@@ -1182,12 +1366,22 @@
                     </h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('giang_vien.khoa_hoc.cap_nhat', $kh->id_khoa_hoc) }}" method="POST">
+                <form action="{{ route('giang_vien.khoa_hoc.cap_nhat', $kh->id_khoa_hoc) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body p-4">
                         <div class="mb-3">
                             <label class="form-label fw-semibold text-dark text-sm">Tên khóa học <span class="text-danger">*</span></label>
                             <input type="text" name="ten_khoa_hoc" class="form-control rounded-3" value="{{ $kh->tieu_de_khoa_hoc }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Hình ảnh đại diện khóa học</label>
+                            @if($kh->hinh_anh && file_exists(public_path($kh->hinh_anh)))
+                                <div class="mb-2">
+                                    <img src="{{ asset($kh->hinh_anh) }}" alt="{{ $kh->tieu_de_khoa_hoc }}" class="rounded-3 border shadow-xs" style="width: 140px; height: 80px; object-fit: cover;">
+                                </div>
+                            @endif
+                            <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                            <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB). Để trống nếu không muốn đổi ảnh.</small>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -1229,6 +1423,15 @@
                         <div class="mb-1">
                             <label class="form-label fw-semibold text-dark text-sm">Nội dung giới thiệu chi tiết</label>
                             <textarea name="noi_dung_gioi_thieu_chi_tiet" rows="3" class="form-control rounded-3">{{ $kh->noi_dung_gioi_thieu_chi_tiet }}</textarea>
+                        </div>
+                        <div class="mt-3 p-3 bg-light rounded-3 border">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" role="switch" id="switchMoDangKySua{{ $kh->id_khoa_hoc }}" name="trang_thai_mo_dang_ky" value="1" {{ (int)($kh->trang_thai_mo_dang_ky ?? 1) === 1 ? 'checked' : '' }}>
+                                <label class="form-check-label fw-semibold text-dark text-sm" for="switchMoDangKySua{{ $kh->id_khoa_hoc }}">
+                                    Cho phép học viên đăng ký khóa học này
+                                </label>
+                            </div>
+                            <div class="text-muted text-xs ms-1">Khi tắt, học viên sẽ không nhìn thấy khóa học này trên bảng điều khiển.</div>
                         </div>
                     </div>
                     <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
@@ -1301,13 +1504,26 @@
                                 <input type="text" name="tieu_de_bai_hoc" class="form-control rounded-3" placeholder="Ví dụ: Bài 1: Cấu trúc cơ bản và Thiết lập môi trường" required>
                             </div>
                             <div class="row g-3 mb-3">
-                                <div class="col-md-7">
-                                    <label class="form-label fw-semibold text-dark text-sm">Đường dẫn Video bài giảng (URL / YouTube Embed)</label>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-dark text-sm">Đường dẫn Video bài giảng (URL / YouTube)</label>
                                     <input type="text" name="duong_dan_video_bai_giang" class="form-control rounded-3" placeholder="https://www.youtube.com/embed/...">
                                 </div>
-                                <div class="col-md-5">
-                                    <label class="form-label fw-semibold text-dark text-sm">Thời lượng video (giây)</label>
-                                    <input type="number" name="thoi_luong_video_giay" class="form-control rounded-3" value="600" min="60">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-dark text-sm">Thời lượng video (Phút & Giây)</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="input-group">
+                                                <input type="number" name="thoi_luong_phut" class="form-control rounded-start-3" min="0" placeholder="0" value="10">
+                                                <span class="input-group-text rounded-end-3 text-xs bg-light">phút</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="input-group">
+                                                <input type="number" name="thoi_luong_giay" class="form-control rounded-start-3" min="0" max="59" placeholder="0" value="0">
+                                                <span class="input-group-text rounded-end-3 text-xs bg-light">giây</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -1338,26 +1554,25 @@
     @endforeach
 @endforeach
 
-{{-- 3b. Modals Xem trước Video Bài Giảng Trực Tiếp Trên Bàn Làm Việc --}}
+{{-- 3b. Modals Xem Chi Tiết Bài Học & Video Bài Giảng Trực Tiếp Trên Bàn Làm Việc --}}
 @foreach ($danhSachKhoaHoc as $kh)
     @foreach ($kh->danhSachChuongMuc as $ch)
         @foreach ($ch->danhSachBaiHoc as $bh)
-            <div class="modal fade modal-preview-video" id="modalPreviewVideo{{ $bh->id_bai_hoc }}" tabindex="-1" aria-hidden="true">
+            <div class="modal fade modal-preview-video" id="modalXemChiTietBaiHoc_{{ $bh->id_chi_tiet_bai_hoc }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                        {{-- Modal Header --}}
                         <div class="modal-header border-bottom py-3 px-4 bg-light">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 text-xs">
-                                    <i class="fa-solid fa-video me-1"></i> Video bài giảng
-                                </span>
-                                <h6 class="modal-title fw-bold text-dark mb-0 text-truncate" style="max-width: 450px;" title="{{ $bh->tieu_de_bai_hoc }}">
-                                    {{ $bh->tieu_de_bai_hoc }}
+                            <div class="d-flex align-items-center gap-2 overflow-hidden pe-2">
+                                <h6 class="modal-title fw-bold text-dark mb-0 text-truncate" title="📖 Chi tiết bài học: {{ $bh->tieu_de_bai_hoc }}">
+                                    📖 Chi tiết bài học: {{ $bh->tieu_de_bai_hoc }}
                                 </h6>
                             </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <button type="button" class="btn-close flex-shrink-0" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
+
                         <div class="modal-body p-0">
-                            {{-- Video Player --}}
+                            {{-- Khung phát video bài giảng --}}
                             @php
                                 $vUrl = $bh->duong_dan_video_bai_giang ?? '';
                                 $isYt = str_contains($vUrl, 'youtube.com') || str_contains($vUrl, 'youtu.be');
@@ -1369,7 +1584,7 @@
                                 }
                             @endphp
 
-                            <div class="bg-dark text-center" style="aspect-ratio: 16/9; max-height: 420px; display: flex; align-items: center; justify-content: center; position: relative;">
+                            <div class="bg-dark text-center" style="aspect-ratio: 16/9; max-height: 400px; display: flex; align-items: center; justify-content: center; position: relative;">
                                 @if ($isYt && $ytId)
                                     <iframe
                                         style="width: 100%; height: 100%; border: 0;"
@@ -1399,46 +1614,168 @@
                                 @endif
                             </div>
 
-                            {{-- Lesson Content & AI Notes Preview --}}
+                            {{-- Chi tiết bài học & Thông tin tổng quan --}}
                             <div class="p-4">
-                                <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <span class="text-xs text-muted">
-                                        <i class="fa-regular fa-clock me-1"></i> Thời lượng: {{ $bh->thoi_luong_video_giay ? floor($bh->thoi_luong_video_giay / 60) . ' phút' : 'Chưa đặt' }}
-                                    </span>
-                                    @if ($bh->deThiTracNghiem || $bh->deThi)
-                                        <span class="badge bg-success-subtle text-success text-xs">
-                                            <i class="fa-solid fa-check me-1"></i> Đã có đề thi trắc nghiệm
-                                        </span>
-                                    @else
-                                        <span class="badge bg-warning-subtle text-warning text-xs">
-                                            <i class="fa-solid fa-clock me-1"></i> Chưa có đề thi
-                                        </span>
-                                    @endif
+                                {{-- Thanh thông tin tổng quan (Thời lượng & Học thử) --}}
+                                @php
+                                    $bhSec = (int) ($bh->thoi_luong_video_giay ?? $bh->thoi_luong ?? 0);
+                                    $bhPhut = floor($bhSec / 60);
+                                    $bhGiay = $bhSec % 60;
+                                @endphp
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2.5 rounded-3 bg-light border mb-3">
+                                    <div class="d-flex flex-wrap align-items-center gap-3">
+                                        {{-- Thời lượng bài học dạng [Phút] phút [Giây] giây --}}
+                                        <div class="d-flex align-items-center gap-1.5 text-xs text-dark fw-semibold">
+                                            <i class="fa-regular fa-clock text-primary fs-6"></i>
+                                            <span>Thời lượng:</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1">
+                                                @if ($bhSec > 0)
+                                                    {{ $bhPhut }} phút {{ $bhGiay }} giây
+                                                @else
+                                                    {{ $bh->thoi_luong_hien_thi ?? '0 phút' }}
+                                                @endif
+                                            </span>
+                                        </div>
+
+                                        {{-- Trạng thái học thử --}}
+                                        <div>
+                                            @if ($bh->cho_phep_hoc_thu)
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                    <i class="fa-solid fa-circle-check me-1"></i> Cho phép học thử
+                                                </span>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                    <i class="fa-solid fa-lock me-1"></i> Nội dung nội bộ (cần đăng ký)
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    {{-- Đề kiểm tra --}}
+                                    <div>
+                                        @if ($bh->deThiTracNghiem || $bh->deThi)
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                <i class="fa-solid fa-list-check me-1"></i> Có đề thi ({{ ($bh->deThiTracNghiem ?? $bh->deThi)->danhSachCauHoi->count() }} câu)
+                                            </span>
+                                        @else
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                <i class="fa-solid fa-circle-exclamation me-1"></i> Chưa có đề thi
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
 
-                                @if (!empty($bh->tom_tat_kien_thuc_cho_ai))
-                                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                                        <div class="fw-semibold text-dark text-xs mb-1 d-flex align-items-center gap-1.5">
-                                            <i class="fa-solid fa-wand-magic-sparkles text-warning"></i> Tóm tắt kiến thức (cho AI Trợ giảng):
-                                        </div>
-                                        <div class="text-xs text-secondary mb-0" style="white-space: pre-line;">{{ $bh->tom_tat_kien_thuc_cho_ai }}</div>
+                                {{-- Khung tóm tắt nội dung AI --}}
+                                <div class="p-3 bg-warning-subtle border border-warning-subtle rounded-3 mb-3">
+                                    <div class="fw-bold text-dark text-xs mb-1.5 d-flex align-items-center gap-1.5">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-warning"></i> ✨ Tóm tắt nội dung AI:
                                     </div>
-                                @endif
+                                    <div class="text-xs text-dark" style="white-space: pre-line; line-height: 1.6;">
+                                        {{ !empty($bh->tom_tat_kien_thuc_cho_ai) ? $bh->tom_tat_kien_thuc_cho_ai : 'Chưa có dữ liệu tóm tắt kiến thức cho AI trợ giảng.' }}
+                                    </div>
+                                </div>
 
-                                @if (!empty($bh->noi_dung_bai_hoc_chi_tiet))
-                                    <div class="mb-0">
-                                        <div class="fw-semibold text-dark text-xs mb-1">Nội dung chi tiết bài giảng:</div>
-                                        <div class="text-xs text-muted" style="max-height: 120px; overflow-y: auto; white-space: pre-line;">{{ Str::limit(strip_tags($bh->noi_dung_bai_hoc_chi_tiet), 350) }}</div>
+                                {{-- Nội dung chi tiết bài học --}}
+                                <div class="card border rounded-3 p-3 bg-light-subtle">
+                                    <div class="fw-bold text-dark text-xs mb-2 d-flex align-items-center gap-1.5">
+                                        <i class="fa-solid fa-book-open text-primary"></i> Nội dung chi tiết bài giảng:
                                     </div>
-                                @endif
+                                    <div class="text-xs text-secondary" style="max-height: 180px; overflow-y: auto; white-space: pre-line; line-height: 1.6;">
+                                        {{ !empty($bh->noi_dung_bai_hoc_chi_tiet) ? $bh->noi_dung_bai_hoc_chi_tiet : 'Chưa có nội dung chi tiết cho bài học này.' }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="modal-footer border-top py-2.5 px-4 bg-light">
-                            <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-xs" data-bs-dismiss="modal">Đóng</button>
-                            <a href="{{ route('student.lesson.show', $bh->id_bai_hoc) }}" target="_blank" class="btn btn-primary rounded-pill px-3.5 py-1.5 text-xs fw-semibold">
-                                <i class="fa-solid fa-up-right-from-square me-1"></i> Mở toàn màn hình bài học
-                            </a>
+
+                        {{-- Modal Footer --}}
+                        <div class="modal-footer border-top py-2.5 px-4 bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{{ route('student.lesson.show', $bh->id_bai_hoc) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 text-xs fw-semibold">
+                                    <i class="fa-solid fa-up-right-from-square me-1"></i> Mở toàn màn hình
+                                </a>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 text-xs" data-bs-dismiss="modal">Đóng</button>
+                                <button type="button" class="btn btn-sm btn-warning rounded-pill px-3.5 py-1.5 text-xs fw-semibold text-dark shadow-xs" data-bs-toggle="modal" data-bs-target="#modalSuaBaiHoc_{{ $bh->id_chi_tiet_bai_hoc }}">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> ✏️ Chỉnh sửa bài học
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    @endforeach
+@endforeach
+
+{{-- 3c. Modals Chỉnh Sửa Bài Học Cho Giảng Viên --}}
+@foreach ($danhSachKhoaHoc as $kh)
+    @foreach ($kh->danhSachChuongMuc as $ch)
+        @foreach ($ch->danhSachBaiHoc as $bh)
+            <div class="modal fade" id="modalSuaBaiHoc_{{ $bh->id_chi_tiet_bai_hoc }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content rounded-4 border-0 shadow">
+                        <div class="modal-header border-bottom py-3">
+                            <h6 class="modal-title fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-pen-to-square text-warning me-2"></i> Chỉnh Sửa Bài Học: {{ $bh->tieu_de_bai_hoc }}
+                            </h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="{{ route('giang_vien.bai_hoc.cap_nhat', $bh->id_bai_hoc) }}" method="POST">
+                            @csrf
+                            <div class="modal-body p-4">
+                                <div class="p-2.5 rounded-3 bg-light mb-3 text-xs text-muted">
+                                    Chương mục: <strong class="text-dark">{{ $ch->tieu_de_chuong_muc }}</strong> • Khóa học: <strong class="text-dark">{{ $kh->tieu_de_khoa_hoc }}</strong>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-dark text-sm">Tiêu đề bài học <span class="text-danger">*</span></label>
+                                    <input type="text" name="tieu_de_bai_hoc" class="form-control rounded-3" value="{{ $bh->tieu_de_bai_hoc }}" required>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark text-sm">Đường dẫn Video bài học (YouTube / URL)</label>
+                                        <input type="text" name="duong_dan_video" class="form-control rounded-3" value="{{ $bh->duong_dan_video_bai_giang }}" placeholder="https://www.youtube.com/embed/...">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark text-sm">Thời lượng video (Phút & Giây)</label>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <div class="input-group">
+                                                    <input type="number" name="thoi_luong_phut" class="form-control rounded-start-3" min="0" placeholder="0" value="{{ $bh->thoi_luong_phut }}">
+                                                    <span class="input-group-text rounded-end-3 text-xs bg-light">phút</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="input-group">
+                                                    <input type="number" name="thoi_luong_giay" class="form-control rounded-start-3" min="0" max="59" placeholder="0" value="{{ $bh->thoi_luong_giay }}">
+                                                    <span class="input-group-text rounded-end-3 text-xs bg-light">giây</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-dark text-sm">Tóm tắt kiến thức (cho Trợ lý AI tạo đề trắc nghiệm)</label>
+                                    <textarea name="tom_tat_kien_thuc_cho_ai" rows="3" class="form-control rounded-3" placeholder="Tóm tắt các ý chính trọng tâm để AI sinh đề trắc nghiệm...">{{ $bh->tom_tat_kien_thuc_cho_ai }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-dark text-sm">Nội dung chi tiết bài giảng</label>
+                                    <textarea name="noi_dung_bai_hoc" rows="4" class="form-control rounded-3" placeholder="Nội dung giáo trình, tài liệu học tập...">{{ $bh->noi_dung_bai_hoc_chi_tiet }}</textarea>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="cho_phep_hoc_thu" value="1" id="suaHocThu{{ $bh->id_bai_hoc }}" {{ $bh->cho_phep_hoc_thu ? 'checked' : '' }}>
+                                    <label class="form-check-label text-sm text-dark" for="suaHocThu{{ $bh->id_bai_hoc }}">
+                                        Cho phép học viên học thử bài này
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
+                                <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Hủy</button>
+                                <button type="submit" class="btn btn-warning rounded-pill px-4 py-1.5 text-sm fw-semibold text-dark">
+                                    <i class="fa-solid fa-check me-1"></i> Lưu thay đổi
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -1515,7 +1852,7 @@
                     @endforelse
                 </div>
                 <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
-                    <a href="{{ route('quiz.take', $dt->id_de_thi) }}" target="_blank" class="btn btn-outline-success rounded-pill px-3 py-1.5 text-sm fw-medium">
+                    <a href="{{ route('hoc_vien.lam_bai_thi', $dt->id_de_thi_trac_nghiem) }}" target="_blank" class="btn btn-outline-success rounded-pill px-3 py-1.5 text-sm fw-medium">
                         <i class="fa-solid fa-play me-1"></i> Thi thử đề này
                     </a>
                     <button type="button" class="btn btn-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Đóng</button>
@@ -1910,7 +2247,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get('tab');
-        if (tabParam && ['tong-quan', 'khoa-hoc', 'de-thi', 'ket-qua'].includes(tabParam)) {
+        if (tabParam && ['tong-quan', 'khoa-hoc', 'de-thi', 'ket-qua', 'duyet-hoc-vien'].includes(tabParam)) {
             const targetBtn = document.getElementById('btn-tab-' + tabParam);
             if (targetBtn && !targetBtn.classList.contains('active')) {
                 const tabInstance = new bootstrap.Tab(targetBtn);

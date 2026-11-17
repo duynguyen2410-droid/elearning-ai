@@ -221,8 +221,13 @@
                 </a>
             @endif
 
-            {{-- Nút chính: Tiếp tục bài học --}}
-            @if(isset($deThi) && $deThi->id_bai_hoc)
+            {{-- Nút chính: Tiếp tục bài học hoặc Quay lại Bàn làm việc nếu là Giảng viên --}}
+            @if(Auth::check() && Auth::user()->id_phan_quyen == 2)
+                <a href="{{ route('giang_vien.tong_quan', ['tab' => 'de-thi']) }}" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold text-sm shadow-sm d-inline-flex align-items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Quay lại Bàn làm việc Giảng viên</span>
+                </a>
+            @elseif(isset($deThi) && $deThi->id_bai_hoc)
                 <a href="{{ route('student.lesson.show', $deThi->id_bai_hoc) }}" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold text-sm shadow-sm d-inline-flex align-items-center gap-2">
                     <span>Tiếp tục bài học</span>
                     <i class="fa-solid fa-arrow-right"></i>

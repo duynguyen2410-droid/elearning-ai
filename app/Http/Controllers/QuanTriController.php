@@ -17,7 +17,10 @@ use App\Models\PhanQuyen;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class QuanTriController extends Controller
 {
@@ -84,6 +87,11 @@ class QuanTriController extends Controller
         $soLuongGiangVien = User::where('id_phan_quyen', 2)->count();
         $soLuongHocVien = $tongHocVien;
 
+        // Danh sách giảng viên phục vụ modal phân công khóa học
+        $danhSachGiangVien = User::where('id_phan_quyen', 2)
+            ->orderBy('ho_va_ten', 'asc')
+            ->get();
+
         // Xác định tab đang kích hoạt (từ query param ?tab= hoặc flash session active_tab)
         $tabParam = $request->query('tab', session('active_tab', 'tong-quan'));
         $validTabs = ['tong-quan', 'khoa-hoc', 'de-thi', 'tai-khoan'];
@@ -107,6 +115,7 @@ class QuanTriController extends Controller
             'danhSachTaiKhoan',
             'danhSachNguoiDung',
             'danhSachPhanQuyen',
+            'danhSachGiangVien',
             'soLuongAdmin',
             'soLuongGiangVien',
             'soLuongHocVien',
@@ -308,24 +317,186 @@ class QuanTriController extends Controller
         $request->validate([
             'ten_danh_muc'  => 'required|string|max:150',
             'mo_ta_danh_muc'=> 'nullable|string|max:1000',
+            'hinh_anh'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'ten_danh_muc.required' => 'Vui lòng nhập tên danh mục.',
             'ten_danh_muc.max'      => 'Tên danh mục không vượt quá 150 ký tự.',
+            'hinh_anh.image'        => 'Hình ảnh đại diện phải là file hình ảnh hợp lệ.',
+            'hinh_anh.mimes'        => 'Hình ảnh hỗ trợ định dạng: jpeg, png, jpg, webp.',
+            'hinh_anh.max'          => 'Dung lượng hình ảnh không được vượt quá 2MB.',
         ]);
 
         $ten = trim($request->ten_danh_muc);
         $slug = Str::slug($ten) ?: 'danh-muc-' . time();
+
+        $hinhAnhPath = null;
+        if ($request->hasFile('hinh_anh') && $request->file('hinh_anh')->isValid()) {
+            $file = $request->file('hinh_anh');
+            $filename = 'dm-' . $slug . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/khoa_hoc'), $filename);
+            $hinhAnhPath = 'uploads/khoa_hoc/' . $filename;
+        }
 
         DanhMucKhoaHoc::create([
             'ten_danh_muc'              => $ten,
             'duong_dan_than_thien_slug' => $slug,
             'mo_ta_danh_muc'            => $request->mo_ta_danh_muc,
             'thu_tu_hien_thi'           => DanhMucKhoaHoc::count() + 1,
+            'hinh_anh'                  => $hinhAnhPath,
         ]);
 
         return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
             ->with('active_tab', 'khoa-hoc')
             ->with('success', "Đã thêm danh mục '{$ten}' thành công!");
+    }
+
+    /**
+     * Cập nhật danh mục khóa học
+     */
+    public function capNhatDanhMuc(Request $request, $id)
+    {
+        $danhMuc = DanhMucKhoaHoc::findOrFail($id);
+
+        $request->validate([
+            'ten_danh_muc'   => 'required|string|max:150',
+            'mo_ta_danh_muc' => 'nullable|string|max:1000',
+            'hinh_anh'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'ten_danh_muc.required' => 'Vui lòng nhập tên danh mục.',
+            'ten_danh_muc.max'      => 'Tên danh mục không vượt quá 150 ký tự.',
+            'hinh_anh.image'        => 'Hình ảnh đại diện phải là file hình ảnh hợp lệ.',
+            'hinh_anh.mimes'        => 'Hình ảnh hỗ trợ định dạng: jpeg, png, jpg, webp.',
+            'hinh_anh.max'          => 'Dung lượng hình ảnh không được vượt quá 2MB.',
+        ]);
+
+        $ten = trim($request->ten_danh_muc);
+        $danhMuc->ten_danh_muc = $ten;
+        $danhMuc->duong_dan_than_thien_slug = Str::slug($ten) ?: 'danh-muc-' . time();
+        $danhMuc->mo_ta_danh_muc = $request->mo_ta_danh_muc;
+
+        if ($request->hasFile('hinh_anh') && $request->file('hinh_anh')->isValid()) {
+            if ($danhMuc->hinh_anh && file_exists(public_path($danhMuc->hinh_anh))) {
+                @unlink(public_path($danhMuc->hinh_anh));
+            }
+            $file = $request->file('hinh_anh');
+            $filename = 'dm-' . Str::slug($ten) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/khoa_hoc'), $filename);
+            $danhMuc->hinh_anh = 'uploads/khoa_hoc/' . $filename;
+        }
+
+        $danhMuc->save();
+
+        return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
+            ->with('active_tab', 'khoa-hoc')
+            ->with('success', 'Đã cập nhật danh mục thành công!');
+    }
+
+    /**
+     * Admin tạo khóa học mới
+     */
+    public function themKhoaHoc(Request $request)
+    {
+        $request->validate([
+            'tieu_de_khoa_hoc'     => 'required|string|max:200',
+            'id_danh_muc'          => 'required|integer|exists:danh_muc_khoa_hoc,id_danh_muc',
+            'id_giang_vien'        => 'nullable|integer|exists:tai_khoan_nguoi_dung,id_nguoi_dung',
+            'mo_ta_ngan_gon'       => 'nullable|string|max:500',
+            'tong_thoi_luong_phut' => 'nullable|integer|min:0',
+            'hinh_anh'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'tieu_de_khoa_hoc.required' => 'Vui lòng nhập tên khóa học.',
+            'id_danh_muc.required'      => 'Vui lòng chọn danh mục đào tạo.',
+            'id_danh_muc.exists'        => 'Danh mục được chọn không hợp lệ.',
+            'hinh_anh.image'            => 'Hình ảnh đại diện phải là file hình ảnh hợp lệ.',
+            'hinh_anh.mimes'            => 'Hình ảnh hỗ trợ định dạng: jpeg, png, jpg, webp.',
+            'hinh_anh.max'              => 'Dung lượng hình ảnh không được vượt quá 2MB.',
+        ]);
+
+        $hinhAnhPath = null;
+        if ($request->hasFile('hinh_anh') && $request->file('hinh_anh')->isValid()) {
+            $file = $request->file('hinh_anh');
+            $filename = Str::slug($request->tieu_de_khoa_hoc) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/khoa_hoc'), $filename);
+            $hinhAnhPath = 'uploads/khoa_hoc/' . $filename;
+        }
+
+        $slug = Str::slug($request->tieu_de_khoa_hoc) . '-' . time();
+        $giangVienId = $request->id_giang_vien ?: Auth::id();
+
+        $khoaHoc = KhoaHoc::create([
+            'id_giang_vien_phu_trach'       => $giangVienId,
+            'id_danh_muc'                   => $request->id_danh_muc,
+            'tieu_de_khoa_hoc'              => trim($request->tieu_de_khoa_hoc),
+            'duong_dan_than_thien_slug'     => $slug,
+            'mo_ta_ngan_gon'                => $request->mo_ta_ngan_gon,
+            'noi_dung_gioi_thieu_chi_tiet'  => $request->mo_ta_ngan_gon,
+            'duong_dan_anh_bia'             => $hinhAnhPath,
+            'hinh_anh'                      => $hinhAnhPath,
+            'cap_do_khoa_hoc'               => 'co_ban',
+            'trang_thai_xuat_ban'           => 'xuat_ban',
+            'trang_thai_mo_dang_ky'         => 1,
+            'tong_thoi_luong_phut'          => $request->input('tong_thoi_luong_phut', 60),
+            'thoi_diem_tao'                 => Carbon::now(),
+            'thoi_diem_cap_nhat'            => Carbon::now(),
+        ]);
+
+        return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
+            ->with('active_tab', 'khoa-hoc')
+            ->with('success', "Đã tạo khóa học mới '{$khoaHoc->tieu_de_khoa_hoc}' thành công!");
+    }
+
+    /**
+     * Admin cập nhật thông tin và hình ảnh khóa học
+     */
+    public function capNhatKhoaHoc(Request $request, $id)
+    {
+        $khoaHoc = KhoaHoc::findOrFail($id);
+
+        $request->validate([
+            'tieu_de_khoa_hoc'     => 'nullable|string|max:200',
+            'ten_khoa_hoc'         => 'nullable|string|max:200',
+            'id_danh_muc'          => 'required|integer|exists:danh_muc_khoa_hoc,id_danh_muc',
+            'tong_thoi_luong_phut' => 'nullable|integer|min:0',
+            'mo_ta_ngan_gon'       => 'nullable|string|max:500',
+            'hinh_anh'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'id_danh_muc.required' => 'Vui lòng chọn danh mục đào tạo.',
+            'id_danh_muc.exists'   => 'Danh mục được chọn không hợp lệ.',
+            'hinh_anh.image'       => 'Hình ảnh đại diện phải là file hình ảnh hợp lệ.',
+            'hinh_anh.mimes'       => 'Hình ảnh hỗ trợ định dạng: jpeg, png, jpg, webp.',
+            'hinh_anh.max'         => 'Dung lượng hình ảnh không được vượt quá 2MB.',
+        ]);
+
+        $tenKhoaHoc = trim($request->input('ten_khoa_hoc') ?: $request->input('tieu_de_khoa_hoc', ''));
+        if (!empty($tenKhoaHoc)) {
+            $khoaHoc->tieu_de_khoa_hoc = $tenKhoaHoc;
+        }
+        $khoaHoc->id_danh_muc = $request->id_danh_muc;
+
+        if ($request->filled('tong_thoi_luong_phut')) {
+            $khoaHoc->tong_thoi_luong_phut = (int)$request->tong_thoi_luong_phut;
+        }
+        if ($request->has('mo_ta_ngan_gon')) {
+            $khoaHoc->mo_ta_ngan_gon = $request->mo_ta_ngan_gon;
+        }
+
+        if ($request->hasFile('hinh_anh') && $request->file('hinh_anh')->isValid()) {
+            if ($khoaHoc->hinh_anh && file_exists(public_path($khoaHoc->hinh_anh))) {
+                @unlink(public_path($khoaHoc->hinh_anh));
+            }
+            $file = $request->file('hinh_anh');
+            $filename = Str::slug($khoaHoc->tieu_de_khoa_hoc) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/khoa_hoc'), $filename);
+            $khoaHoc->hinh_anh = 'uploads/khoa_hoc/' . $filename;
+            $khoaHoc->duong_dan_anh_bia = 'uploads/khoa_hoc/' . $filename;
+        }
+
+        $khoaHoc->thoi_diem_cap_nhat = Carbon::now();
+        $khoaHoc->save();
+
+        return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
+            ->with('active_tab', 'khoa-hoc')
+            ->with('success', "Đã cập nhật thông tin khóa học '{$khoaHoc->tieu_de_khoa_hoc}' thành công!");
     }
 
     /**
@@ -335,10 +506,15 @@ class QuanTriController extends Controller
     {
         $danhMuc = DanhMucKhoaHoc::findOrFail($id);
 
-        if (KhoaHoc::where('id_danh_muc', $id)->exists()) {
+        $soKhoaHoc = KhoaHoc::where('id_danh_muc', $id)->count();
+        if ($soKhoaHoc > 0) {
             return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
                 ->with('active_tab', 'khoa-hoc')
-                ->with('error', "Không thể xóa danh mục '{$danhMuc->ten_danh_muc}' vì đang có khóa học thuộc danh mục này!");
+                ->with('error', "Không thể xóa danh mục '{$danhMuc->ten_danh_muc}' vì đang có {$soKhoaHoc} khóa học thuộc danh mục này!");
+        }
+
+        if ($danhMuc->hinh_anh && file_exists(public_path($danhMuc->hinh_anh))) {
+            @unlink(public_path($danhMuc->hinh_anh));
         }
 
         $danhMuc->delete();
@@ -364,6 +540,40 @@ class QuanTriController extends Controller
         return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
             ->with('active_tab', 'khoa-hoc')
             ->with('success', "Đã cập nhật trạng thái khóa học '{$khoaHoc->tieu_de_khoa_hoc}' sang [{$nhanTrangThai}]!");
+    }
+
+    /**
+     * Phân công / Đổi Giảng viên phụ trách khóa học
+     */
+    public function phanCongGiangVien(Request $request, $id)
+    {
+        $khoaHoc = KhoaHoc::findOrFail($id);
+
+        $request->validate([
+            'id_giang_vien' => [
+                'required',
+                'integer',
+                Rule::exists('tai_khoan_nguoi_dung', 'id_nguoi_dung')->where(function ($query) {
+                    $query->where('id_phan_quyen', 2);
+                }),
+            ],
+        ], [
+            'id_giang_vien.required' => 'Vui lòng chọn giảng viên phụ trách.',
+            'id_giang_vien.exists'   => 'Giảng viên được chọn không hợp lệ hoặc không có quyền Giảng viên trong hệ thống.',
+        ]);
+
+        $giangVien = User::findOrFail($request->id_giang_vien);
+
+        // Cập nhật giảng viên phụ trách khóa học
+        $khoaHoc->id_giang_vien_phu_trach = $giangVien->id_nguoi_dung;
+        if (Schema::hasColumn('khoa_hoc', 'id_nguoi_tao')) {
+            $khoaHoc->id_nguoi_tao = $giangVien->id_nguoi_dung;
+        }
+        $khoaHoc->save();
+
+        return redirect()->route('quan_tri.tong_quan', ['tab' => 'khoa-hoc'])
+            ->with('active_tab', 'khoa-hoc')
+            ->with('success', "Đã phân công khóa học '{$khoaHoc->tieu_de_khoa_hoc}' cho giảng viên '{$giangVien->ho_va_ten}'!");
     }
 
     /**

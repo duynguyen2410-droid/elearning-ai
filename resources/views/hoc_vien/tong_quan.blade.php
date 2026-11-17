@@ -821,6 +821,21 @@
         color: #fff;
     }
 
+    .modal-ai-icon-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(139, 92, 246, 0.18));
+        color: #4f46e5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        border: 1px solid rgba(79, 70, 229, 0.2);
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+        flex-shrink: 0;
+    }
+
     /* ════════════════════════════════════════════
        RESPONSIVE
     ════════════════════════════════════════════ */
@@ -986,18 +1001,35 @@
                 <div class="course-block">
 
                     {{-- ── Course header ────────────────────── --}}
+                    @php
+                        $daDangKyKhoaHoc = $khoaHoc->da_dang_ky ?? (isset($idKhoaHocDaDangKy) && in_array($khoaHoc->id_khoa_hoc, $idKhoaHocDaDangKy));
+                        $trangThaiDuyet = $khoaHoc->trang_thai_duyet ?? null;
+                        $baiHocDauTien = $khoaHoc->bai_hoc_dau_tien ?? ($khoaHoc->danhSachChuongMuc ? $khoaHoc->danhSachChuongMuc->pluck('danhSachBaiHoc')->flatten()->first() : null);
+                    @endphp
                     <div class="course-header">
                         <div class="course-thumb">
-                            @if ($khoaHoc->hinh_anh_dai_dien)
-                                <img
-                                    src="{{ asset('storage/' . $khoaHoc->hinh_anh_dai_dien) }}"
-                                    alt="{{ $khoaHoc->ten_khoa_hoc }}"
-                                    loading="lazy"
-                                >
+                            @if ($daDangKyKhoaHoc && $baiHocDauTien)
+                                <a href="{{ route('student.lesson.show', $baiHocDauTien->id_chi_tiet_bai_hoc ?? $baiHocDauTien->id_bai_hoc) }}" class="d-block w-100 h-100" title="Vào học ngay">
+                                    @if($khoaHoc->hinh_anh && file_exists(public_path($khoaHoc->hinh_anh)))
+                                        <img src="{{ asset($khoaHoc->hinh_anh) }}" alt="{{ $khoaHoc->ten_khoa_hoc ?? $khoaHoc->tieu_de_khoa_hoc }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" loading="lazy">
+                                    @elseif ($khoaHoc->hinh_anh_dai_dien && file_exists(public_path('storage/' . $khoaHoc->hinh_anh_dai_dien)))
+                                        <img src="{{ asset('storage/' . $khoaHoc->hinh_anh_dai_dien) }}" alt="{{ $khoaHoc->ten_khoa_hoc ?? $khoaHoc->tieu_de_khoa_hoc }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" loading="lazy">
+                                    @else
+                                        <div class="d-flex align-items-center justify-content-center h-100 text-primary">
+                                            <i class="bi bi-book fs-1"></i>
+                                        </div>
+                                    @endif
+                                </a>
                             @else
-                                <div class="course-thumb-placeholder">
-                                    <i class="fas fa-book-open"></i>
-                                </div>
+                                @if($khoaHoc->hinh_anh && file_exists(public_path($khoaHoc->hinh_anh)))
+                                    <img src="{{ asset($khoaHoc->hinh_anh) }}" alt="{{ $khoaHoc->ten_khoa_hoc ?? $khoaHoc->tieu_de_khoa_hoc }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" loading="lazy">
+                                @elseif ($khoaHoc->hinh_anh_dai_dien && file_exists(public_path('storage/' . $khoaHoc->hinh_anh_dai_dien)))
+                                    <img src="{{ asset('storage/' . $khoaHoc->hinh_anh_dai_dien) }}" alt="{{ $khoaHoc->ten_khoa_hoc ?? $khoaHoc->tieu_de_khoa_hoc }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" loading="lazy">
+                                @else
+                                    <div class="d-flex align-items-center justify-content-center h-100 text-primary">
+                                        <i class="bi bi-book fs-1"></i>
+                                    </div>
+                                @endif
                             @endif
                         </div>
 
@@ -1022,12 +1054,34 @@
                                 @if ($khoaHoc->danhMuc)
                                     <span class="pill pill-category">{{ $khoaHoc->danhMuc->ten_danh_muc }}</span>
                                 @endif
+
+                                @if ($daDangKyKhoaHoc || $trangThaiDuyet === 1)
+                                    <span class="pill" style="background: rgba(16, 185, 129, .12); color: #059669; font-weight: 600;">
+                                        <i class="fa-solid fa-circle-check me-1"></i> Đã tham gia
+                                    </span>
+                                @elseif ($trangThaiDuyet === 0)
+                                    <span class="pill" style="background: rgba(245, 158, 11, .15); color: #d97706; font-weight: 600;">
+                                        <i class="fa-solid fa-hourglass-half me-1"></i> Đang chờ duyệt
+                                    </span>
+                                @elseif ($trangThaiDuyet === 2)
+                                    <span class="pill" style="background: rgba(239, 68, 68, .12); color: #dc2626; font-weight: 600;">
+                                        <i class="fa-solid fa-circle-xmark me-1"></i> Yêu cầu bị từ chối
+                                    </span>
+                                @endif
                             </div>
 
-                            <h3>{{ $khoaHoc->ten_khoa_hoc }}</h3>
+                            <h3>
+                                @if ($daDangKyKhoaHoc && $baiHocDauTien)
+                                    <a href="{{ route('student.lesson.show', $baiHocDauTien->id_chi_tiet_bai_hoc ?? $baiHocDauTien->id_bai_hoc) }}" class="text-decoration-none text-dark hover-primary" title="Vào học ngay">
+                                        {{ $khoaHoc->tieu_de_khoa_hoc ?? $khoaHoc->ten_khoa_hoc }}
+                                    </a>
+                                @else
+                                    <span class="text-dark">{{ $khoaHoc->tieu_de_khoa_hoc ?? $khoaHoc->ten_khoa_hoc }}</span>
+                                @endif
+                            </h3>
 
-                            @if ($khoaHoc->mo_ta_khoa_hoc)
-                                <p class="course-desc">{{ $khoaHoc->mo_ta_khoa_hoc }}</p>
+                            @if ($khoaHoc->mo_ta_ngan_gon ?? $khoaHoc->mo_ta_khoa_hoc)
+                                <p class="course-desc">{{ $khoaHoc->mo_ta_ngan_gon ?? $khoaHoc->mo_ta_khoa_hoc }}</p>
                             @endif
 
                             <div class="course-meta-row">
@@ -1051,6 +1105,39 @@
                                         {{ $khoaHoc->danhSachChuongMuc->count() }} chương
                                     </span>
                                 @endif
+
+                                {{-- Nút hành động Đăng ký / Vào học --}}
+                                <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+                                    @if ($daDangKyKhoaHoc || $trangThaiDuyet === 1)
+                                        @if ($baiHocDauTien)
+                                            <a href="{{ route('student.lesson.show', $baiHocDauTien->id_chi_tiet_bai_hoc ?? $baiHocDauTien->id_bai_hoc) }}" class="btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs">
+                                                <i class="fas fa-play text-xs"></i> Vào học ngay
+                                            </a>
+                                        @else
+                                            <span class="badge bg-light text-muted border rounded-pill px-3 py-2 text-xs">
+                                                Chưa có bài học
+                                            </span>
+                                        @endif
+                                    @elseif ($trangThaiDuyet === 0)
+                                        <button type="button" class="btn btn-sm btn-secondary disabled rounded-pill px-3.5 py-1.5 text-xs fw-semibold opacity-75" disabled title="Yêu cầu đang chờ giảng viên xét duyệt">
+                                            <i class="fa-solid fa-hourglass-half me-1"></i> Đang chờ duyệt
+                                        </button>
+                                    @elseif ($trangThaiDuyet === 2)
+                                        <form action="{{ route('hoc_vien.dang_ky_khoa_hoc', $khoaHoc->id_khoa_hoc) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs text-xs">
+                                                <i class="fa-solid fa-rotate-right text-xs"></i> Gửi lại yêu cầu
+                                            </button>
+                                        </form>
+                                    @else
+                                        <form action="{{ route('hoc_vien.dang_ky_khoa_hoc', $khoaHoc->id_khoa_hoc) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs text-xs">
+                                                <i class="fa-solid fa-file-pen text-xs"></i> Gửi yêu cầu đăng ký
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1073,7 +1160,10 @@
                                     <span style="font-weight:500; color: var(--text-muted); font-size:.78rem;">
                                         — {{ $khoaHoc->danhSachChuongMuc->count() }} chương
                                         @php
-                                            $totalLessons = $khoaHoc->danhSachChuongMuc->sum(fn($ch) => $ch->danhSachBaiHoc ? $ch->danhSachBaiHoc->count() : 0);
+                                            $totalLessons = $khoaHoc->danhSachChuongMuc->sum(function($ch) {
+                                                $lessons = $ch->danhSachBaiHoc ?? $ch->chiTietBaiHoc;
+                                                return $lessons ? $lessons->count() : 0;
+                                            });
                                         @endphp
                                         • {{ $totalLessons }} bài học
                                     </span>
@@ -1087,6 +1177,9 @@
                             >
                                 <div class="accordion accordion-flush" id="chapters-{{ $khoaHoc->id_khoa_hoc }}">
                                     @foreach ($khoaHoc->danhSachChuongMuc as $indexChuong => $chuongMuc)
+                                        @php
+                                            $danhSachBaiHocHienThi = ($chuongMuc->danhSachBaiHoc ?? $chuongMuc->chiTietBaiHoc ?? collect())->values();
+                                        @endphp
                                         <div class="chapter-item">
                                             {{-- Chapter button --}}
                                             <button
@@ -1098,14 +1191,12 @@
                                             >
                                                 <div class="chapter-left">
                                                     <span class="chapter-number">{{ $indexChuong + 1 }}</span>
-                                                    <span class="chapter-name">{{ $chuongMuc->ten_chuong_muc }}</span>
+                                                    <span class="chapter-name">{{ $chuongMuc->tieu_de_chuong_muc ?? $chuongMuc->ten_chuong_muc }}</span>
                                                 </div>
                                                 <div class="chapter-right">
-                                                    @if ($chuongMuc->danhSachBaiHoc)
-                                                        <span class="chapter-lesson-count">
-                                                            {{ $chuongMuc->danhSachBaiHoc->count() }} bài học
-                                                        </span>
-                                                    @endif
+                                                    <span class="chapter-lesson-count">
+                                                        {{ $danhSachBaiHocHienThi->count() }} bài học
+                                                    </span>
                                                     <i class="fas fa-chevron-down chapter-chevron"></i>
                                                 </div>
                                             </button>
@@ -1116,24 +1207,47 @@
                                                 id="chapter-{{ $khoaHoc->id_khoa_hoc }}-{{ $indexChuong }}"
                                                 data-bs-parent="#chapters-{{ $khoaHoc->id_khoa_hoc }}"
                                             >
-                                                @if ($chuongMuc->danhSachBaiHoc && $chuongMuc->danhSachBaiHoc->count())
+                                                @if ($danhSachBaiHocHienThi->isNotEmpty())
                                                     <ul class="lesson-list">
-                                                        @foreach ($chuongMuc->danhSachBaiHoc as $baiHoc)
-                                                            <li class="lesson-item">
+                                                        @foreach ($danhSachBaiHocHienThi as $baiHoc)
+                                                            <li class="lesson-item {{ !$daDangKyKhoaHoc ? 'opacity-75 bg-light-subtle' : '' }}">
                                                                 <div class="lesson-left">
-                                                                    <span class="lesson-icon">
-                                                                        <i class="fas fa-play"></i>
-                                                                    </span>
+                                                                    @if ($daDangKyKhoaHoc)
+                                                                        <span class="lesson-icon" title="Bấm vào để học bài">
+                                                                            <i class="fas fa-play"></i>
+                                                                        </span>
+                                                                    @else
+                                                                        <span class="lesson-icon" style="background: rgba(148, 163, 184, 0.15); color: #64748b;" title="Bài học bị khóa. Vui lòng gửi yêu cầu đăng ký và chờ duyệt!">
+                                                                            <i class="fa-solid fa-lock text-secondary"></i>
+                                                                        </span>
+                                                                    @endif
+
                                                                     <div class="lesson-info-wrap">
-                                                                        <a href="{{ route('student.lesson.show', $baiHoc->id_chi_tiet_bai_hoc ?? $baiHoc->id_bai_hoc) }}" class="lesson-title-link" title="{{ $baiHoc->tieu_de_bai_hoc }}">
-                                                                            <span class="lesson-title">{{ $baiHoc->tieu_de_bai_hoc }}</span>
-                                                                            <i class="fa-solid fa-arrow-up-right-from-square lesson-link-icon"></i>
-                                                                        </a>
+                                                                        @if ($daDangKyKhoaHoc)
+                                                                            <a href="{{ route('student.lesson.show', $baiHoc->id_chi_tiet_bai_hoc ?? $baiHoc->id_bai_hoc) }}" class="lesson-title-link" title="{{ $baiHoc->tieu_de_bai_hoc }}">
+                                                                                <span class="lesson-title">{{ $baiHoc->tieu_de_bai_hoc }}</span>
+                                                                                <i class="fa-solid fa-arrow-up-right-from-square lesson-link-icon"></i>
+                                                                            </a>
+                                                                        @else
+                                                                            <span class="lesson-title text-muted" style="cursor: not-allowed;" title="{{ $baiHoc->tieu_de_bai_hoc }} (Cần được giảng viên duyệt để mở khóa)">
+                                                                                {{ $baiHoc->tieu_de_bai_hoc }}
+                                                                            </span>
+                                                                        @endif
+
                                                                         <div class="lesson-badges-row">
                                                                             {{-- Duration badge --}}
+                                                                            @php
+                                                                                $sec = (int) ($baiHoc->thoi_luong_video_giay ?? $baiHoc->thoi_luong_video ?? $baiHoc->thoi_luong ?? 0);
+                                                                                $p = floor($sec / 60);
+                                                                                $s = $sec % 60;
+                                                                            @endphp
                                                                             <span class="badge-lesson-meta badge-duration">
                                                                                 <i class="fa-regular fa-clock"></i>
-                                                                                {{ $baiHoc->thoi_luong_video ? (floor($baiHoc->thoi_luong_video / 60) > 0 ? floor($baiHoc->thoi_luong_video / 60) . ' phút' : gmdate('i:s', $baiHoc->thoi_luong_video)) : '15 phút' }}
+                                                                                @if ($sec > 0)
+                                                                                    {{ $p > 0 ? $p . ' phút ' : '' }}{{ $s > 0 ? $s . ' giây' : ($p == 0 ? '0s' : '') }}
+                                                                                @else
+                                                                                    {{ $baiHoc->thoi_luong_hien_thi ?? 'Chưa đặt' }}
+                                                                                @endif
                                                                             </span>
 
                                                                             {{-- Status badge --}}
@@ -1150,53 +1264,68 @@
                                                                                     <i class="fa-regular fa-circle-dot"></i> Chưa có đề thi
                                                                                 </span>
                                                                             @endif
-
-                                                                            {{-- Trial badge --}}
-                                                                            @if ($baiHoc->co_cho_phep_hoc_thu)
-                                                                                <span class="lesson-trial-badge">Học thử</span>
-                                                                            @endif
                                                                         </div>
                                                                     </div>
                                                                 </div>
 
                                                                 <div class="lesson-right">
-                                                                    {{-- Primary Action Button: Làm bài thi / Vào thi --}}
-                                                                    @if ($quiz)
-                                                                        <a
-                                                                            href="{{ route('quiz.take', $quiz->id_de_thi) }}"
-                                                                            class="btn-quiz-primary"
-                                                                        >
-                                                                            <i class="fa-solid fa-file-pen"></i>
-                                                                            Làm bài thi
-                                                                        </a>
-                                                                    @else
+                                                                    @if ($daDangKyKhoaHoc)
+                                                                        {{-- Primary Action Button: Làm bài thi / Vào thi --}}
+                                                                        @if ($quiz)
+                                                                            <a
+                                                                                href="{{ route('quiz.take', $quiz->id_de_thi) }}"
+                                                                                class="btn-quiz-primary"
+                                                                            >
+                                                                                <i class="fa-solid fa-file-pen"></i>
+                                                                                Làm bài thi
+                                                                            </a>
+                                                                        @else
+                                                                            <button
+                                                                                type="button"
+                                                                                class="btn-quiz-primary disabled"
+                                                                                disabled
+                                                                                title="Chưa có đề thi cho bài học này. Vui lòng bấm 'AI Tạo Đề Thi' để tạo đề tự động!"
+                                                                            >
+                                                                                <i class="fa-solid fa-file-pen"></i>
+                                                                                Làm bài thi
+                                                                            </button>
+                                                                        @endif
+
+                                                                        {{-- AI Generate Quiz Button (Kích hoạt Modal) --}}
                                                                         <button
                                                                             type="button"
-                                                                            class="btn-quiz-primary disabled"
-                                                                            disabled
-                                                                            title="Chưa có đề thi cho bài học này. Vui lòng bấm 'AI Tạo Đề Thi' để tạo đề tự động!"
-                                                                        >
-                                                                            <i class="fa-solid fa-file-pen"></i>
-                                                                            Làm bài thi
-                                                                        </button>
-                                                                    @endif
-
-                                                                    {{-- AI Generate Quiz Button --}}
-                                                                    <form
-                                                                        action="{{ route('baihoc.ai-tao-cau-hoi', $baiHoc->id_bai_hoc) }}"
-                                                                        method="POST"
-                                                                        class="m-0 d-inline"
-                                                                    >
-                                                                        @csrf
-                                                                        <button
-                                                                            type="submit"
                                                                             class="btn-quiz-ai"
-                                                                            onclick="this.innerHTML='<i class=\'fa-solid fa-spinner fa-spin\'></i> AI đang tạo...'; this.classList.add('disabled');"
+                                                                            data-bs-toggle="modal"
+                                                                            data-bs-target="#modalHocVienTaoDeAi_{{ $baiHoc->id_chi_tiet_bai_hoc }}"
+                                                                            title="Tùy chọn tạo đề thi AI bằng Gemini"
                                                                         >
                                                                             <i class="fa-solid fa-wand-magic-sparkles"></i>
                                                                             AI Tạo Đề Thi
                                                                         </button>
-                                                                    </form>
+                                                                    @else
+                                                                        {{-- Chưa được duyệt: disabled cả 2 nút --}}
+                                                                        <button
+                                                                            type="button"
+                                                                            class="btn-quiz-primary disabled"
+                                                                            disabled
+                                                                            style="opacity: 0.5; cursor: not-allowed;"
+                                                                            title="Vui lòng đăng ký và chờ giảng viên duyệt để làm bài thi"
+                                                                        >
+                                                                            <i class="fa-solid fa-lock text-xs"></i>
+                                                                            Làm bài thi
+                                                                        </button>
+
+                                                                        <button
+                                                                            type="button"
+                                                                            class="btn-quiz-ai disabled"
+                                                                            disabled
+                                                                            style="opacity: 0.5; cursor: not-allowed;"
+                                                                            title="Vui lòng đăng ký và chờ giảng viên duyệt để dùng AI tạo đề"
+                                                                        >
+                                                                            <i class="fa-solid fa-lock text-xs"></i>
+                                                                            AI Tạo Đề Thi
+                                                                        </button>
+                                                                    @endif
                                                                 </div>
                                                             </li>
                                                         @endforeach
@@ -1234,6 +1363,145 @@
                     </a>
                 </div>
             @endforelse
+
+            {{-- ════════════════════════════════════════════════════════
+                 MODALS: AI TẠO ĐỀ THI CHO HỌC VIÊN
+            ════════════════════════════════════════════════════════ --}}
+            @if (isset($danhSachKhoaHoc))
+                @foreach ($danhSachKhoaHoc as $kh)
+                    @if ($kh->danhSachChuongMuc)
+                        @foreach ($kh->danhSachChuongMuc as $ch)
+                            @if ($ch->danhSachBaiHoc)
+                                @foreach ($ch->danhSachBaiHoc as $baiHoc)
+                                    @php
+                                        $bhId = $baiHoc->id_chi_tiet_bai_hoc ?? $baiHoc->id_bai_hoc;
+                                        $soLanDaTao = $soLanTaoDeTheoBaiHoc[$baiHoc->id_bai_hoc] ?? ($soLanTaoDeTheoBaiHoc[$baiHoc->id_chi_tiet_bai_hoc] ?? null);
+                                        if ($soLanDaTao === null && Auth::check()) {
+                                            $soLanDaTao = \App\Models\DeThiTracNghiem::where(function($q) use ($bhId) {
+                                                $q->where('id_chi_tiet_bai_hoc', $bhId)->orWhere('id_bai_hoc', $bhId);
+                                            })->where('id_nguoi_tao', Auth::id())->count();
+                                        }
+                                        $soLanDaTao = $soLanDaTao ?? 0;
+                                        $isHocVien = (Auth::check() && (int)Auth::user()->id_phan_quyen === 3);
+                                        $isHetLuot = ($isHocVien && $soLanDaTao >= 3);
+                                    @endphp
+                                    <div class="modal fade" id="modalHocVienTaoDeAi_{{ $bhId }}" tabindex="-1" aria-labelledby="modalLabel_{{ $bhId }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                                <div class="modal-header border-0 pb-0 pt-4 px-4">
+                                                    <div class="d-flex align-items-center gap-2.5">
+                                                        <div class="modal-ai-icon-box">
+                                                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h5 class="modal-title fw-bold text-dark mb-0 fs-6" id="modalLabel_{{ $bhId }}">
+                                                                Khởi tạo Đề thi AI - Gemini 1.5
+                                                            </h5>
+                                                            <span class="text-xs text-muted">Cố vấn đề thi trắc nghiệm thông minh</span>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+
+                                                <form action="{{ route('baihoc.ai-tao-cau-hoi', $baiHoc->id_bai_hoc) }}" method="POST" id="formTaoDeAi_{{ $bhId }}">
+                                                    @csrf
+                                                    <div class="modal-body px-4 py-3">
+                                                        {{-- Tên bài học muốn tạo đề --}}
+                                                        <div class="p-3 mb-3 rounded-3 bg-light border border-light-subtle">
+                                                            <div class="text-xs text-muted fw-semibold text-uppercase mb-1 d-flex align-items-center gap-1.5">
+                                                                <i class="fa-solid fa-book-open text-primary"></i>
+                                                                <span>Bài học áp dụng</span>
+                                                            </div>
+                                                            <div class="fw-bold text-dark fs-6">
+                                                                {{ $baiHoc->tieu_de_bai_hoc }}
+                                                            </div>
+                                                        </div>
+
+                                                        {{-- Thông tin lượt dùng --}}
+                                                        @if ($isHocVien)
+                                                            @if ($isHetLuot)
+                                                                <div class="alert alert-danger d-flex align-items-center gap-2.5 py-2.5 px-3 mb-3 rounded-3 border-danger-subtle shadow-xs" role="alert">
+                                                                    <i class="fa-solid fa-circle-exclamation fs-5 text-danger flex-shrink-0"></i>
+                                                                    <div>
+                                                                        <div class="fw-bold text-danger">Bạn đã hết lượt tạo đề thi AI!</div>
+                                                                        <div class="text-xs text-danger-emphasis">
+                                                                            Bạn đã sử dụng <strong>{{ $soLanDaTao }} / 3</strong> lượt tạo đề thi AI cho bài học này.
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @else
+                                                                <div class="alert alert-info d-flex align-items-center justify-content-between py-2.5 px-3 mb-3 rounded-3 border-info-subtle shadow-xs" role="alert">
+                                                                    <div class="d-flex align-items-center gap-2">
+                                                                        <i class="fa-solid fa-circle-info fs-5 text-primary flex-shrink-0"></i>
+                                                                        <div>
+                                                                            <div class="text-xs text-secondary mb-0.5">Giới hạn phát sinh đề thi:</div>
+                                                                            <div class="text-xs text-dark">
+                                                                                Bạn đã sử dụng <strong>{{ $soLanDaTao }} / 3</strong> lượt tạo đề thi AI cho bài học này.
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                                                        Còn {{ 3 - $soLanDaTao }} lượt
+                                                                    </span>
+                                                                </div>
+                                                            @endif
+                                                        @else
+                                                            <div class="alert alert-success d-flex align-items-center gap-2 py-2 px-3 mb-3 rounded-3 border-success-subtle text-xs" role="alert">
+                                                                <i class="fa-solid fa-infinity fs-6 text-success flex-shrink-0"></i>
+                                                                <div>
+                                                                    <span class="fw-semibold">Tài khoản Quản trị / Giảng viên:</span> Không giới hạn số lần phát sinh đề thi AI.
+                                                                </div>
+                                                            </div>
+                                                        @endif
+
+                                                        {{-- Dropdown chọn số lượng câu hỏi mong muốn --}}
+                                                        <div class="mb-2">
+                                                            <label class="form-label fw-semibold text-dark small mb-1.5 d-flex align-items-center gap-1.5">
+                                                                <i class="fa-solid fa-list-ol text-primary"></i>
+                                                                <span>Chọn số lượng câu hỏi mong muốn</span>
+                                                            </label>
+                                                            <select name="so_luong_cau_hoi" class="form-select form-select-sm py-2 rounded-3" {{ $isHetLuot ? 'disabled' : '' }}>
+                                                                <option value="3">3 câu hỏi (Kiểm tra nhanh)</option>
+                                                                <option value="5" selected>5 câu hỏi (Đầy đủ tiêu chuẩn)</option>
+                                                                <option value="10">10 câu hỏi (Nâng cao & Toàn diện)</option>
+                                                            </select>
+                                                            <div class="form-text text-muted text-xs mt-1.5 d-flex align-items-start gap-1">
+                                                                <i class="fa-solid fa-shield-halved text-success mt-0.5"></i>
+                                                                <span>Gemini tự động kiểm tra chống trùng lặp với các câu hỏi đã có của bài học.</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="modal-footer bg-light px-4 py-3 border-top-0 d-flex justify-content-between">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-1.5 text-xs" data-bs-dismiss="modal">
+                                                            Đóng
+                                                        </button>
+
+                                                        @if ($isHetLuot)
+                                                            <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4 py-1.5 text-xs fw-semibold" disabled>
+                                                                <i class="fa-solid fa-ban me-1"></i> Đã hết lượt tạo đề thi AI
+                                                            </button>
+                                                        @else
+                                                            <button
+                                                                type="submit"
+                                                                class="btn btn-sm btn-primary rounded-pill px-4 py-1.5 text-xs fw-semibold shadow-sm d-inline-flex align-items-center gap-1.5"
+                                                                onclick="this.innerHTML='<i class=\'fa-solid fa-spinner fa-spin\'></i> AI đang khởi tạo đề thi...'; this.classList.add('disabled'); this.form.submit();"
+                                                            >
+                                                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                                                Bắt đầu tạo đề thi AI
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
+                        @endforeach
+                    @endif
+                @endforeach
+            @endif
 
         </div>
     </section>

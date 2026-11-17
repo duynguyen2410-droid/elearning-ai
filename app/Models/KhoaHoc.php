@@ -21,8 +21,10 @@ class KhoaHoc extends Model
         'mo_ta_ngan_gon',
         'noi_dung_gioi_thieu_chi_tiet',
         'duong_dan_anh_bia',
+        'hinh_anh',
         'cap_do_khoa_hoc',
         'trang_thai_xuat_ban',
+        'trang_thai_mo_dang_ky',
         'tong_thoi_luong_phut',
         'thoi_diem_tao',
         'thoi_diem_cap_nhat',
@@ -39,6 +41,13 @@ class KhoaHoc extends Model
     {
         return $this->belongsTo(User::class, 'id_giang_vien_phu_trach', 'id_nguoi_dung');
     }
+
+    // Danh sách ghi danh / đăng ký khóa học
+    public function danhSachGhiDanh()
+    {
+        return $this->hasMany(GhiDanhKhoaHoc::class, 'id_khoa_hoc', 'id_khoa_hoc');
+    }
+
     // Một khóa học có nhiều chương mục bài học
     public function danhSachChuongMuc()
     {
@@ -66,5 +75,15 @@ class KhoaHoc extends Model
     public function baiHoc()
     {
         return $this->danhSachBaiHoc();
+    }
+
+    public function getHinhAnhAttribute($value)
+    {
+        return $value ?: ($this->attributes['duong_dan_anh_bia'] ?? null);
+    }
+
+    public function getTenKhoaHocAttribute()
+    {
+        return $this->tieu_de_khoa_hoc;
     }
 }

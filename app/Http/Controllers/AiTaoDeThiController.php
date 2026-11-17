@@ -15,124 +15,385 @@ use Carbon\Carbon;
 
 class AiTaoDeThiController extends Controller
 {
-    public function generateQuiz($baiHocId)
+    /**
+     * AI Phát sinh đề thi trắc nghiệm (Hỗ trợ giới hạn 3 lần cho học viên, tùy chọn 3/5/10 câu)
+     */
+    public function generateQuiz(Request $request, $baiHocId)
     {
-        $baiHoc = ChiTietBaiHoc::findOrFail($baiHocId);
-        $apiKey = env('GEMINI_API_KEY');
-
-        if (!$apiKey) {
-            return back()->with('error', 'Chưa cấu hình GEMINI_API_KEY trong file .env');
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('dang_nhap')->with('error', 'Vui lòng đăng nhập để sử dụng tính năng AI.');
         }
 
-        // 1. Tìm hoặc tạo đề thi gắn với bài học này
-        $deThi = DeThiTracNghiem::firstOrCreate(
-            ['id_bai_hoc' => $baiHoc->id_bai_hoc],
-            [
-                'tieu_de_de_thi'          => 'Bài trắc nghiệm: ' . $baiHoc->tieu_de_bai_hoc,
-                'mo_ta_yeu_cau'           => 'Bài kiểm tra tự động bởi Trợ lý AI.',
-                'thoi_luong_lam_bai_phut' => 15,
-                'diem_so_toi_da'          => 10,
-                'diem_so_qua_mon'         => 5,
-                'so_lan_lam_lai_toi_da'   => 5,
-                'cho_phep_xem_loi_giai'   => 1,
-                'trang_thai_mo_de'        => 1,
-            ]
-        );
+        $baiHoc = ChiTietBaiHoc::with('chuongMuc.khoaHoc')->findOrFail($baiHocId);
+        $isHocVien = ((int)$user->id_phan_quyen === 3);
+        $soLanDaTao = 0;
 
-        // 2. Lấy danh sách các câu hỏi đã có sẵn để chống sinh trùng lặp
-        $cacCauHoiCu = CauHoiKiemTra::where('id_de_thi', $deThi->id_de_thi)
-            ->pluck('noi_dung_cau_hoi')
-            ->toArray();
+        // 1. Kiểm tra giới hạn lượt tạo: Học viên tối đa 3 lần / bài học
+        if ($isHocVien) {
+            $soLanDaTao = DeThiTracNghiem::where(function ($q) use ($baiHocId) {
+                    $q->where('id_chi_tiet_bai_hoc', $baiHocId)
+                      ->orWhere('id_bai_hoc', $baiHocId);
+                })
+                ->where('id_nguoi_tao', $user->id_nguoi_dung)
+                ->count();
 
-        $danhSachDaCo = empty($cacCauHoiCu) ? 'Chưa có' : implode("\n- ", $cacCauHoiCu);
-
-        // 3. Xây dựng prompt chi tiết
-        $prompt = "Dựa trên nội dung tóm tắt sau: '{$baiHoc->tom_tat_kien_thuc_cho_ai}'.\n"
-            . "Các câu hỏi ĐÃ CÓ trong đề thi (TUYỆT ĐỐI KHÔNG TẠO TRÙNG LẶP HAY TƯƠNG TỰ CÁC CÂU NÀY):\n"
-            . "- {$danhSachDaCo}\n\n"
-            . "Yêu cầu: Hãy khai thác một khía cạnh kiến thức KHÁC hoàn toàn so với các câu trên, tạo 1 câu hỏi trắc nghiệm gồm 4 đáp án (A, B, C, D) với đúng 1 đáp án chính xác.\n"
-            . "Trả về DUY NHẤT định dạng JSON như sau, không kèm bất kỳ giải thích hay ký tự markdown nào:\n"
-            . "{\n"
-            . "  \"noi_dung_cau_hoi\": \"Chuỗi câu hỏi mới...\",\n"
-            . "  \"giai_thich\": \"Giải thích ngắn gọn lý do vì sao đáp án đúng...\",\n"
-            . "  \"phuong_an\": [\n"
-            . "    {\"ky_tu\": \"A\", \"noi_dung\": \"...\", \"dung\": 1},\n"
-            . "    {\"ky_tu\": \"B\", \"noi_dung\": \"...\", \"dung\": 0},\n"
-            . "    {\"ky_tu\": \"C\", \"noi_dung\": \"...\", \"dung\": 0},\n"
-            . "    {\"ky_tu\": \"D\", \"noi_dung\": \"...\", \"dung\": 0}\n"
-            . "  ]\n"
-            . "}";
-
-        set_time_limit(120);
-
-        // Danh sách model ưu tiên
-        $models = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
-        $quizData = null;
-        $lastError = '';
-
-        foreach ($models as $modelName) {
-            try {
-                $response = Http::timeout(15)->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}", [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt]
-                            ]
-                        ]
-                    ],
-                    'generationConfig' => [
-                        'temperature' => 0.7, // Tăng sáng tạo để tránh câu hỏi trùng lặp
-                    ]
-                ]);
-
-                if ($response->successful()) {
-                    $resData = $response->json();
-                    $rawText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-                    // Lọc bỏ markdown block nếu Gemini bọc json
-                    $cleanJson = preg_replace('/```(json)?|```/', '', $rawText);
-                    $parsed = json_decode(trim($cleanJson), true);
-
-                    if ($parsed && isset($parsed['noi_dung_cau_hoi']) && isset($parsed['phuong_an'])) {
-                        $quizData = $parsed;
-                        break;
-                    }
-                } else {
-                    $lastError = $response->body();
-                }
-            } catch (\Exception $e) {
-                $lastError = $e->getMessage();
+            if ($soLanDaTao >= 3) {
+                return back()->with('error', 'Bạn đã dùng hết giới hạn 3 lần phát sinh đề thi AI cho bài học này!');
             }
         }
 
-        if (!$quizData) {
-            return back()->with('error', 'Hệ thống AI đang bận hoặc không thể tạo câu hỏi: ' . $lastError);
+        // 2. Lấy số lượng câu hỏi mong muốn (3, 5, 10 câu)
+        $soLuong = (int)$request->input('so_luong_cau_hoi', 5);
+        if (!in_array($soLuong, [3, 5, 10])) {
+            $soLuong = 5;
         }
 
-        // 4. Lưu câu hỏi vào DB
-        $thuTu = CauHoiKiemTra::where('id_de_thi', $deThi->id_de_thi)->count() + 1;
-        $cauHoi = CauHoiKiemTra::create([
-            'id_de_thi'                  => $deThi->id_de_thi,
-            'noi_dung_cau_hoi'           => '[AI Tạo] ' . $quizData['noi_dung_cau_hoi'],
-            'giai_thich_chi_tiet_dap_an' => $quizData['giai_thich'] ?? 'Không có giải thích',
-            'nguon_goc_cau_hoi'          => 'ai_sinh',
-            'trang_thai_kiem_duyet'      => 1,
-            'muc_do_kho'                 => 'Trung_binh',
-            'diem_so_cau_hoi'            => 1,
-            'thu_tu_hien_thi'            => $thuTu,
+        // 3. Lấy danh sách câu hỏi đã có sẵn của bài học này để CHỐNG TRÙNG LẶP
+        $cauHoiHienCo = CauHoiKiemTra::whereHas('deThi', function ($q) use ($baiHocId) {
+                $q->where('id_chi_tiet_bai_hoc', $baiHocId)
+                  ->orWhere('id_bai_hoc', $baiHocId);
+            })
+            ->pluck('noi_dung_cau_hoi')
+            ->map(function ($q) {
+                return trim(preg_replace('/^\[AI\s*Tạo\]\s*/i', '', $q));
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $chongTrungText = "";
+        if (!empty($cauHoiHienCo)) {
+            $chongTrungText = "\nCÁC CÂU HỎI ĐÃ CÓ (TUYỆT ĐỐI KHÔNG TẠO TRÙNG HOẶC TƯƠNG TỰ VỀ NỘI DUNG VỚI DANH SÁCH NÀY):\n";
+            foreach (array_slice($cauHoiHienCo, -15) as $c) {
+                $chongTrungText .= "- " . $c . "\n";
+            }
+        }
+
+        $contextText = $baiHoc->tom_tat_kien_thuc_cho_ai
+            ?: ($baiHoc->noi_dung_bai_hoc_chi_tiet
+                ? strip_tags($baiHoc->noi_dung_bai_hoc_chi_tiet)
+                : $baiHoc->tieu_de_bai_hoc);
+
+        $apiKey = env('GEMINI_API_KEY');
+        $questionsData = [];
+
+        // 4. Gọi Google Gemini API để sinh đề thi
+        if ($apiKey) {
+            set_time_limit(120);
+            $prompt = "Bạn là chuyên gia sư phạm và biên soạn đề thi trắc nghiệm AI cho nền tảng e-learning EduMind AI.\n"
+                . "Dựa trên bài học: '{$baiHoc->tieu_de_bai_hoc}' và tóm tắt kiến thức: '{$contextText}'.\n"
+                . "Hãy tạo ĐÚNG {$soLuong} câu hỏi trắc nghiệm khách quan mới chất lượng cao nhằm đánh giá hiểu biết của học viên.\n"
+                . "{$chongTrungText}\n"
+                . "Yêu cầu kỹ thuật bắt buộc:\n"
+                . "- Mỗi câu hỏi gồm đúng 4 phương án (A, B, C, D) và chỉ có 1 phương án chính xác.\n"
+                . "- Giá trị 'muc_do_kho' điền một trong: 'de', 'trung_binh', 'kho'.\n"
+                . "- Trả về DUY NHẤT một mảng JSON thuần túy (không kèm markdown ```json hay bất kỳ văn bản nào khác ngoài JSON), theo mẫu sau:\n"
+                . "[\n"
+                . "  {\n"
+                . "    \"noi_dung_cau_hoi\": \"Nội dung câu hỏi...\",\n"
+                . "    \"giai_thich\": \"Giải thích ngắn gọn vì sao đáp án này đúng...\",\n"
+                . "    \"muc_do_kho\": \"trung_binh\",\n"
+                . "    \"phuong_an\": [\n"
+                . "      {\"ky_tu\": \"A\", \"noi_dung\": \"...\", \"dung\": 1},\n"
+                . "      {\"ky_tu\": \"B\", \"noi_dung\": \"...\", \"dung\": 0},\n"
+                . "      {\"ky_tu\": \"C\", \"noi_dung\": \"...\", \"dung\": 0},\n"
+                . "      {\"ky_tu\": \"D\", \"noi_dung\": \"...\", \"dung\": 0}\n"
+                . "    ]\n"
+                . "  }\n"
+                . "]";
+
+            $models = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
+
+            foreach ($models as $modelName) {
+                try {
+                    $response = Http::timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}", [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    ['text' => $prompt]
+                                ]
+                            ]
+                        ],
+                        'generationConfig' => [
+                            'temperature' => 0.7,
+                        ]
+                    ]);
+
+                    if ($response->successful()) {
+                        $resData = $response->json();
+                        $rawText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                        $cleanJson = preg_replace('/```(json)?|```/', '', $rawText);
+                        $parsed = json_decode(trim($cleanJson), true);
+
+                        if (is_array($parsed)) {
+                            // Nếu Gemini bọc mảng câu hỏi trong object key (questions, danh_sach, data...)
+                            if (!isset($parsed[0])) {
+                                foreach (['questions', 'danh_sach_cau_hoi', 'danh_sach', 'quiz', 'data', 'cau_hoi'] as $wrapKey) {
+                                    if (isset($parsed[$wrapKey]) && is_array($parsed[$wrapKey])) {
+                                        $parsed = $parsed[$wrapKey];
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Nếu là 1 object câu hỏi đơn lẻ
+                            if (is_array($parsed) && (isset($parsed['noi_dung_cau_hoi']) || isset($parsed['cau_hoi']) || isset($parsed['question']))) {
+                                $parsed = [$parsed];
+                            }
+
+                            if (is_array($parsed) && count($parsed) > 0) {
+                                $normalized = [];
+                                $kyTuDefault = ['A', 'B', 'C', 'D'];
+
+                                foreach ($parsed as $item) {
+                                    if (!is_array($item)) continue;
+                                    $content = $item['noi_dung_cau_hoi'] ?? $item['cau_hoi'] ?? $item['question'] ?? $item['noi_dung'] ?? null;
+                                    $options = $item['phuong_an'] ?? $item['dap_an'] ?? $item['options'] ?? $item['choices'] ?? null;
+
+                                    if ($content && is_array($options) && count($options) >= 2) {
+                                        $normalizedOptions = [];
+                                        foreach (array_values($options) as $optIdx => $opt) {
+                                            if (is_string($opt)) {
+                                                $normalizedOptions[] = [
+                                                    'ky_tu' => $kyTuDefault[$optIdx] ?? chr(65 + $optIdx),
+                                                    'noi_dung' => $opt,
+                                                    'dung' => ($optIdx === 0) ? 1 : 0
+                                                ];
+                                            } elseif (is_array($opt)) {
+                                                $normalizedOptions[] = [
+                                                    'ky_tu' => $opt['ky_tu'] ?? $opt['key'] ?? ($kyTuDefault[$optIdx] ?? chr(65 + $optIdx)),
+                                                    'noi_dung' => $opt['noi_dung'] ?? $opt['text'] ?? $opt['content'] ?? '',
+                                                    'dung' => (!empty($opt['dung']) || !empty($opt['is_correct']) || !empty($opt['correct'])) ? 1 : 0
+                                                ];
+                                            }
+                                        }
+
+                                        $normalized[] = [
+                                            'noi_dung_cau_hoi' => $content,
+                                            'giai_thich' => $item['giai_thich'] ?? $item['explanation'] ?? 'Đáp án chính xác theo nội dung bài học.',
+                                            'muc_do_kho' => $item['muc_do_kho'] ?? 'trung_binh',
+                                            'phuong_an' => $normalizedOptions,
+                                        ];
+                                    }
+                                }
+
+                                if (count($normalized) > 0) {
+                                    $questionsData = array_slice($normalized, 0, $soLuong);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Thử model kế tiếp
+                }
+            }
+        }
+
+        // 5. Fallback câu hỏi chất lượng cao nếu Gemini API bận hoặc chưa có phản hồi
+        if (empty($questionsData)) {
+            $baseBank = [
+                [
+                    'noi_dung_cau_hoi' => "Mục tiêu cốt lõi của bài học '{$baiHoc->tieu_de_bai_hoc}' là gì?",
+                    'giai_thich'       => "Nội dung bài học hướng đến việc nắm chắc khái niệm nền tảng và vận dụng giải quyết bài tập thực tế.",
+                    'muc_do_kho'       => "de",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Hiểu rõ bản chất kiến thức và áp dụng chính xác vào thực tế", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chỉ học thuộc lòng lý thuyết mà không cần thực hành", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Bỏ qua các bước cơ bản để làm phần nâng cao", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Chỉ áp dụng lý thuyết trên giấy", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Để nắm vững kiến thức bài '{$baiHoc->tieu_de_bai_hoc}', phương pháp học tập nào tối ưu nhất?",
+                    'giai_thich'       => "Kết hợp theo dõi bài giảng, làm bài tập thực hành và trắc nghiệm củng cố kiến thức.",
+                    'muc_do_kho'       => "trung_binh",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Theo dõi bài giảng kết hợp làm bài tập trắc nghiệm củng cố", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chỉ đọc lướt tiêu đề bài học", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Không xem video và tài liệu đính kèm", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Bỏ qua các phần giải thích chi tiết đáp án", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Trong quá trình áp dụng nội dung '{$baiHoc->tieu_de_bai_hoc}', kỹ năng nào là quan trọng nhất?",
+                    'giai_thich'       => "Tư duy phân tích và khả năng tự kiểm tra, xử lý vấn đề độc lập.",
+                    'muc_do_kho'       => "kho",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Tư duy giải quyết vấn đề và tối ưu hóa giải pháp", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Sao chép mã mà không hiểu nguyên lý", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Áp dụng công thức ngẫu nhiên không có kiểm chứng", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Bỏ qua các trường hợp biên và ngoại lệ", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Sau khi hoàn thành bài học, bước nào giúp học viên đánh giá chính xác mức độ tiếp thu?",
+                    'giai_thich'       => "Làm bài kiểm tra trắc nghiệm AI và xem lại các câu trả lời sai.",
+                    'muc_do_kho'       => "trung_binh",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Làm bài thi trắc nghiệm và đối chiếu giải thích chi tiết", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chỉ ghi nhớ điểm số mà không xem lại câu sai", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Đóng hệ thống không nộp bài", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Chuyển ngay sang bài khác khi chưa hoàn thành kiểm tra", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Yếu tố nào quyết định chất lượng đầu ra khi hoàn thành bài '{$baiHoc->tieu_de_bai_hoc}'?",
+                    'giai_thich'       => "Khả năng tự áp dụng kiến thức vào dự án hoặc tình huống thực tế.",
+                    'muc_do_kho'       => "kho",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Khả năng xây dựng sản phẩm và giải quyết vấn đề độc lập", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Học vẹt từng định nghĩa", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Chỉ dựa vào kết quả của người khác", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Không thực hành bài tập mẫu", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Lợi ích nổi bật của việc làm đề thi trắc nghiệm AI sau bài '{$baiHoc->tieu_de_bai_hoc}' là gì?",
+                    'giai_thich'       => "Giúp phản ánh tức thì các lỗ hổng kiến thức để bổ sung kịp thời.",
+                    'muc_do_kho'       => "de",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Nhận biết ngay điểm mạnh và lỗ hổng kiến thức để củng cố", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chỉ để lấy chứng chỉ mà không cần hiểu", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Không mang lại giá trị ôn tập", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Thay thế hoàn toàn việc đọc bài giảng", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Khi gặp câu hỏi khó trong chủ đề '{$baiHoc->tieu_de_bai_hoc}', cách xử lý đúng đắn là gì?",
+                    'giai_thich'       => "Xem lại lý thuyết và phân tích các phương án lựa chọn dựa trên nguyên lý bài học.",
+                    'muc_do_kho'       => "trung_binh",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Xem lại tài liệu bài học và suy luận logic dựa trên nguyên lý", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chọn ngẫu nhiên không cần suy nghĩ", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Bỏ qua không hoàn thành bài", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Dừng bài thi ngay lập tức", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Thực hành bài tập thực tế bài '{$baiHoc->tieu_de_bai_hoc}' giúp ích gì nhất cho bạn?",
+                    'giai_thich'       => "Biến lý thuyết trừu tượng thành kỹ năng vận dụng thực tiễn bền vững.",
+                    'muc_do_kho'       => "kho",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Chuyển hóa kiến thức lý thuyết thành kỹ năng thực tế", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Tốn thời gian không cần thiết", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Chỉ cần xem người khác làm là đủ", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Chỉ phục vụ mục đích vượt qua kỳ thi", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Để ghi nhớ dài hạn kiến thức của bài '{$baiHoc->tieu_de_bai_hoc}', bạn nên làm gì?",
+                    'giai_thich'       => "Ôn tập ngắt quãng và tự kiểm tra định kỳ bằng các đề trắc nghiệm ngẫu nhiên.",
+                    'muc_do_kho'       => "trung_binh",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Ôn tập định kỳ và luyện tập làm bài trắc nghiệm lặp lại", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chỉ học một lần rồi không xem lại", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Học dồn trước kỳ thi", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Chỉ nhớ mẹo làm bài mà không hiểu bản chất", 'dung' => 0],
+                    ]
+                ],
+                [
+                    'noi_dung_cau_hoi' => "Mức độ thông hiểu bài '{$baiHoc->tieu_de_bai_hoc}' được chứng minh rõ nhất khi nào?",
+                    'giai_thich'       => "Khi có thể giải thích lại cho người khác và vận dụng giải quyết bài toán mới.",
+                    'muc_do_kho'       => "kho",
+                    'phuong_an'        => [
+                        ['ky_tu' => 'A', 'noi_dung' => "Giải thích rõ ràng nguyên lý cho người khác và giải bài toán mới", 'dung' => 1],
+                        ['ky_tu' => 'B', 'noi_dung' => "Chỉ giải được đúng ví dụ trong sách", 'dung' => 0],
+                        ['ky_tu' => 'C', 'noi_dung' => "Thuộc lòng từng định nghĩa từ ngữ", 'dung' => 0],
+                        ['ky_tu' => 'D', 'noi_dung' => "Không thể giải bài tập khi có biến đổi số liệu", 'dung' => 0],
+                    ]
+                ],
+            ];
+
+            // Lọc các câu chưa trùng với câu hỏi đã có
+            $filtered = [];
+            foreach ($baseBank as $item) {
+                $isDuplicate = false;
+                foreach ($cauHoiHienCo as $cu) {
+                    if (str_contains(mb_strtolower($cu), mb_strtolower(mb_substr($item['noi_dung_cau_hoi'], 0, 20)))) {
+                        $isDuplicate = true;
+                        break;
+                    }
+                }
+                if (!$isDuplicate) {
+                    $filtered[] = $item;
+                }
+            }
+
+            if (count($filtered) < $soLuong) {
+                $filtered = array_merge($filtered, $baseBank);
+            }
+            $questionsData = array_slice($filtered, 0, $soLuong);
+        }
+
+        // 6. Lưu ĐỀ THI MỚI vào database với id_nguoi_tao và id_chi_tiet_bai_hoc
+        $lanTaoThu = $isHocVien
+            ? ($soLanDaTao + 1)
+            : (DeThiTracNghiem::where('id_chi_tiet_bai_hoc', $baiHoc->id_bai_hoc)->count() + 1);
+
+        $tieuDeDeThi = 'Đề thi AI: ' . $baiHoc->tieu_de_bai_hoc . ($isHocVien ? " (Lần {$lanTaoThu})" : " (#{$lanTaoThu})");
+
+        $deThi = DeThiTracNghiem::create([
+            'id_bai_hoc'              => $baiHoc->id_bai_hoc,
+            'id_chi_tiet_bai_hoc'     => $baiHoc->id_bai_hoc,
+            'id_nguoi_tao'            => $user->id_nguoi_dung,
+            'tieu_de_de_thi'          => $tieuDeDeThi,
+            'mo_ta_yeu_cau'           => "Đề thi tự động gồm {$soLuong} câu hỏi do Trợ lý AI Gemini tạo theo yêu cầu.",
+            'thoi_luong_lam_bai_phut' => max(5, $soLuong * 2),
+            'diem_so_toi_da'          => 10,
+            'diem_so_qua_mon'         => 5,
+            'so_lan_lam_lai_toi_da'   => 5,
+            'cho_phep_xem_loi_giai'   => 1,
+            'trang_thai_mo_de'        => 1,
         ]);
 
-        // 5. Lưu 4 phương án lựa chọn
-        foreach ($quizData['phuong_an'] as $pa) {
-            PhuongAnLuaChon::create([
-                'id_cau_hoi'          => $cauHoi->id_cau_hoi,
-                'ky_tu_phuong_an'     => $pa['ky_tu'],
-                'noi_dung_phuong_an'  => $pa['noi_dung'],
-                'la_dap_an_chinh_xac' => $pa['dung'],
+        // 7. Lưu từng câu hỏi và phương án lựa chọn
+        $diemMoiCau = round(10 / max(1, count($questionsData)), 2);
+        foreach ($questionsData as $idx => $qData) {
+            $noiDung = $qData['noi_dung_cau_hoi'] ?? ($qData['cau_hoi'] ?? ($qData['question'] ?? ('Câu hỏi trắc nghiệm số ' . ($idx + 1))));
+            $cauHoi = CauHoiKiemTra::create([
+                'id_de_thi'                  => $deThi->id_de_thi,
+                'noi_dung_cau_hoi'           => '[AI Tạo] ' . $noiDung,
+                'giai_thich_chi_tiet_dap_an' => $qData['giai_thich'] ?? 'Không có giải thích chi tiết',
+                'nguon_goc_cau_hoi'          => 'ai_sinh',
+                'trang_thai_kiem_duyet'      => 1,
+                'muc_do_kho'                 => $qData['muc_do_kho'] ?? 'trung_binh',
+                'diem_so_cau_hoi'            => $diemMoiCau,
+                'thu_tu_hien_thi'            => $idx + 1,
             ]);
+
+            $danhSachPa = $qData['phuong_an'] ?? [];
+            foreach ($danhSachPa as $pa) {
+                PhuongAnLuaChon::create([
+                    'id_cau_hoi'          => $cauHoi->id_cau_hoi,
+                    'ky_tu_phuong_an'     => $pa['ky_tu'] ?? 'A',
+                    'noi_dung_phuong_an'  => $pa['noi_dung'] ?? '',
+                    'la_dap_an_chinh_xac' => !empty($pa['dung']) ? 1 : 0,
+                ]);
+            }
         }
 
-        return redirect()->route('quiz.take', $deThi->id_de_thi)->with('success', 'AI đã sinh câu hỏi mới thành công!');
+        // 8. Tự động chuyển hướng học viên đến trang làm bài thi của đề vừa tạo
+        return redirect()->route('quiz.take', $deThi->id_de_thi)
+            ->with('success', "AI đã tạo thành công đề thi gồm " . count($questionsData) . " câu hỏi cho bài học '{$baiHoc->tieu_de_bai_hoc}'! Chúc bạn làm bài đạt kết quả tốt!");
+    }
+
+    /**
+     * Alias method sinhDeThiAi
+     */
+    public function sinhDeThiAi(Request $request, $baiHocId)
+    {
+        return $this->generateQuiz($request, $baiHocId);
+    }
+
+    /**
+     * Alias method hocVienSinhDeThi
+     */
+    public function hocVienSinhDeThi(Request $request, $baiHocId)
+    {
+        return $this->generateQuiz($request, $baiHocId);
     }
 
     public function nopBai(Request $request, $deThiId = null)

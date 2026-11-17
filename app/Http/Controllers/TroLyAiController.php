@@ -172,4 +172,20 @@ class TroLyAiController extends Controller
     {
         return $this->ask($request);
     }
+
+    /**
+     * Sinh đề thi trắc nghiệm bằng AI
+     */
+    public function sinhDeThiAi(Request $request, $id)
+    {
+        return app(AiTaoDeThiController::class)->generateQuiz($request, $id);
+    }
+
+    /**
+     * Alias sinh đề thi cho học viên
+     */
+    public function hocVienSinhDeThi(Request $request, $id)
+    {
+        return app(AiTaoDeThiController::class)->generateQuiz($request, $id);
+    }
 }

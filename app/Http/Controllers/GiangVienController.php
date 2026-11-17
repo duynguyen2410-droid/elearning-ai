@@ -18,6 +18,7 @@ use App\Models\CauHoiKiemTra;
 use App\Models\PhuongAnLuaChon;
 use App\Models\LuotLamBaiThi;
 use App\Models\ChiTietCauTraLoi;
+use App\Models\GhiDanhKhoaHoc;
 
 class GiangVienController extends Controller
 {
@@ -81,9 +82,17 @@ class GiangVienController extends Controller
             return !$bh->deThi;
         });
 
-        // 7. Xác định tab đang chọn (?tab= hoặc flash session active_tab)
+        // 7. Danh sách yêu cầu đăng ký khóa học của học viên
+        $danhSachYeuCauDangKy = GhiDanhKhoaHoc::whereIn('id_khoa_hoc', $khoaHocIds)
+            ->with(['hocVien', 'khoaHoc'])
+            ->orderBy('trang_thai_duyet', 'asc')
+            ->orderByDesc('id_ghi_danh')
+            ->get();
+        $soLuongChoDuyet = $danhSachYeuCauDangKy->where('trang_thai_duyet', 0)->count();
+
+        // 8. Xác định tab đang chọn (?tab= hoặc flash session active_tab)
         $tabParam = $request->query('tab', session('active_tab', 'tong-quan'));
-        $validTabs = ['tong-quan', 'khoa-hoc', 'de-thi', 'ket-qua'];
+        $validTabs = ['tong-quan', 'khoa-hoc', 'de-thi', 'ket-qua', 'duyet-hoc-vien'];
         $activeTab = in_array($tabParam, $validTabs, true) ? $tabParam : 'tong-quan';
 
         return view('giang_vien.tong_quan', compact(
@@ -99,6 +108,8 @@ class GiangVienController extends Controller
             'luotThiGanDay',
             'danhSachDanhMuc',
             'baiHocChuaCoDe',
+            'danhSachYeuCauDangKy',
+            'soLuongChoDuyet',
             'activeTab'
         ));
     }
@@ -116,11 +127,23 @@ class GiangVienController extends Controller
             'mo_ta_ngan_gon'       => 'nullable|string|max:500',
             'cap_do_khoa_hoc'      => 'nullable|string',
             'tong_thoi_luong_phut' => 'nullable|integer|min:0',
+            'hinh_anh'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'tieu_de_khoa_hoc.required' => 'Vui lòng nhập tên khóa học.',
             'id_danh_muc.required'      => 'Vui lòng chọn danh mục đào tạo.',
             'id_danh_muc.exists'        => 'Danh mục được chọn không hợp lệ.',
+            'hinh_anh.image'            => 'Hình ảnh đại diện phải là file hình ảnh hợp lệ.',
+            'hinh_anh.mimes'            => 'Hình ảnh hỗ trợ định dạng: jpeg, png, jpg, webp.',
+            'hinh_anh.max'              => 'Dung lượng hình ảnh không được vượt quá 2MB.',
         ]);
+
+        $hinhAnhPath = null;
+        if ($request->hasFile('hinh_anh') && $request->file('hinh_anh')->isValid()) {
+            $file = $request->file('hinh_anh');
+            $filename = Str::slug($request->tieu_de_khoa_hoc) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/khoa_hoc'), $filename);
+            $hinhAnhPath = 'uploads/khoa_hoc/' . $filename;
+        }
 
         $slug = Str::slug($request->tieu_de_khoa_hoc) . '-' . time();
 
@@ -131,8 +154,11 @@ class GiangVienController extends Controller
             'duong_dan_than_thien_slug'     => $slug,
             'mo_ta_ngan_gon'                => $request->mo_ta_ngan_gon,
             'noi_dung_gioi_thieu_chi_tiet'  => $request->noi_dung_gioi_thieu_chi_tiet ?? $request->mo_ta_ngan_gon,
+            'duong_dan_anh_bia'             => $hinhAnhPath,
+            'hinh_anh'                      => $hinhAnhPath,
             'cap_do_khoa_hoc'               => $request->input('cap_do_khoa_hoc', 'co_ban'),
             'trang_thai_xuat_ban'           => 'xuat_ban', // Mặc định mở lớp
+            'trang_thai_mo_dang_ky'         => $request->has('trang_thai_mo_dang_ky') ? 1 : 0,
             'tong_thoi_luong_phut'          => $request->input('tong_thoi_luong_phut', 60),
             'thoi_diem_tao'                 => Carbon::now(),
             'thoi_diem_cap_nhat'            => Carbon::now(),
@@ -160,9 +186,13 @@ class GiangVienController extends Controller
             'noi_dung_gioi_thieu_chi_tiet' => 'nullable|string',
             'cap_do_khoa_hoc'      => 'nullable|string',
             'trang_thai_xuat_ban'  => 'nullable|string',
+            'hinh_anh'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'id_danh_muc.required' => 'Vui lòng chọn danh mục đào tạo.',
             'id_danh_muc.exists'   => 'Danh mục được chọn không hợp lệ.',
+            'hinh_anh.image'       => 'Hình ảnh đại diện phải là file hình ảnh hợp lệ.',
+            'hinh_anh.mimes'       => 'Hình ảnh hỗ trợ định dạng: jpeg, png, jpg, webp.',
+            'hinh_anh.max'         => 'Dung lượng hình ảnh không được vượt quá 2MB.',
         ]);
 
         $tenKhoaHoc = trim($request->input('ten_khoa_hoc') ?: $request->input('tieu_de_khoa_hoc', ''));
@@ -191,6 +221,19 @@ class GiangVienController extends Controller
         }
         if ($request->has('trang_thai_xuat_ban')) {
             $khoaHoc->trang_thai_xuat_ban = $request->trang_thai_xuat_ban;
+        }
+
+        $khoaHoc->trang_thai_mo_dang_ky = $request->has('trang_thai_mo_dang_ky') ? 1 : 0;
+
+        if ($request->hasFile('hinh_anh') && $request->file('hinh_anh')->isValid()) {
+            if ($khoaHoc->hinh_anh && file_exists(public_path($khoaHoc->hinh_anh))) {
+                @unlink(public_path($khoaHoc->hinh_anh));
+            }
+            $file = $request->file('hinh_anh');
+            $filename = Str::slug($tenKhoaHoc) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/khoa_hoc'), $filename);
+            $khoaHoc->hinh_anh = 'uploads/khoa_hoc/' . $filename;
+            $khoaHoc->duong_dan_anh_bia = 'uploads/khoa_hoc/' . $filename;
         }
 
         $khoaHoc->thoi_diem_cap_nhat = Carbon::now();
@@ -240,6 +283,8 @@ class GiangVienController extends Controller
 
         $request->validate([
             'tieu_de_bai_hoc'           => 'required|string|max:200',
+            'thoi_luong_phut'           => 'nullable|integer|min:0',
+            'thoi_luong_giay'           => 'nullable|integer|min:0|max:59',
             'thoi_luong_video_giay'     => 'nullable|integer|min:0',
             'noi_dung_bai_hoc_chi_tiet' => 'nullable|string',
             'tom_tat_kien_thuc_cho_ai'  => 'nullable|string',
@@ -247,6 +292,17 @@ class GiangVienController extends Controller
         ], [
             'tieu_de_bai_hoc.required' => 'Vui lòng nhập tiêu đề bài học.',
         ]);
+
+        // Tính tổng thời lượng (giây) từ phút và giây
+        $phut = (int) $request->input('thoi_luong_phut', 0);
+        $giay = (int) $request->input('thoi_luong_giay', 0);
+        $tongGiay = ($phut * 60) + $giay;
+        if ($tongGiay === 0 && $request->filled('thoi_luong_video_giay')) {
+            $tongGiay = (int) $request->input('thoi_luong_video_giay');
+        }
+        if ($tongGiay === 0 && !$request->has('thoi_luong_phut') && !$request->has('thoi_luong_giay')) {
+            $tongGiay = 600; // Mặc định 10 phút nếu không nhập gì
+        }
 
         // Nếu giảng viên chưa nhập tóm tắt AI, dùng tóm tắt từ nội dung hoặc tiêu đề
         $tomTatAi = $request->tom_tat_kien_thuc_cho_ai;
@@ -263,8 +319,8 @@ class GiangVienController extends Controller
             'tieu_de_bai_hoc'            => trim($request->tieu_de_bai_hoc),
             'loai_bai_hoc'               => 'video',
             'duong_dan_video_bai_giang'  => $request->duong_dan_video_bai_giang,
-            'thoi_luong_video_giay'      => $request->input('thoi_luong_video_giay', 600),
-            'noi_dung_bai_hoc_chi_tiet'  => $request->noi_dung_bai_hoc_chi_tiet,
+            'thoi_luong_video_giay'      => $tongGiay,
+            'noi_dung_bai_hoc_chi_tiet'  => $request->noi_dung_bai_hoc_chi_tiet ?? '',
             'tom_tat_kien_thuc_cho_ai'   => $tomTatAi,
             'duong_dan_tai_lieu_dinh_kem'=> null,
             'cho_phep_hoc_thu'           => $request->has('cho_phep_hoc_thu') ? 1 : 0,
@@ -274,6 +330,72 @@ class GiangVienController extends Controller
         return redirect()->route('giang_vien.tong_quan', ['tab' => 'khoa-hoc'])
             ->with('active_tab', 'khoa-hoc')
             ->with('success', "Đã thêm bài học mới '{$request->tieu_de_bai_hoc}' thành công!");
+    }
+
+    public function capNhatBaiHoc(Request $request, $id)
+    {
+        // Đảm bảo bài học thuộc quyền sở hữu của Giảng viên này
+        $baiHoc = ChiTietBaiHoc::where('id_bai_hoc', $id)
+            ->whereHas('chuongMuc.khoaHoc', function ($q) {
+                $q->where('id_giang_vien_phu_trach', Auth::id());
+            })
+            ->firstOrFail();
+
+        $request->validate([
+            'tieu_de_bai_hoc'           => 'required|string|max:200',
+            'thoi_luong_phut'           => 'nullable|integer|min:0',
+            'thoi_luong_giay'           => 'nullable|integer|min:0|max:59',
+            'thoi_luong_video_giay'     => 'nullable|integer|min:0',
+            'thoi_luong'                => 'nullable|integer|min:0',
+            'noi_dung_bai_hoc_chi_tiet' => 'nullable|string',
+            'noi_dung_bai_hoc'          => 'nullable|string',
+            'tom_tat_kien_thuc_cho_ai'  => 'nullable|string',
+            'duong_dan_video_bai_giang' => 'nullable|string|max:255',
+            'duong_dan_video'           => 'nullable|string|max:255',
+        ], [
+            'tieu_de_bai_hoc.required' => 'Vui lòng nhập tiêu đề bài học.',
+        ]);
+
+        $baiHoc->tieu_de_bai_hoc = trim($request->tieu_de_bai_hoc);
+
+        // Xử lý thời lượng: ưu tiên cụm phút & giây, sau đó fallback thoi_luong hoặc thoi_luong_video_giay
+        if ($request->has('thoi_luong_phut') || $request->has('thoi_luong_giay')) {
+            $phut = (int) $request->input('thoi_luong_phut', 0);
+            $giay = (int) $request->input('thoi_luong_giay', 0);
+            $baiHoc->thoi_luong_video_giay = ($phut * 60) + $giay;
+        } elseif ($request->filled('thoi_luong')) {
+            $baiHoc->thoi_luong_video_giay = (int)$request->thoi_luong * 60;
+        } elseif ($request->filled('thoi_luong_video_giay')) {
+            $baiHoc->thoi_luong_video_giay = (int)$request->thoi_luong_video_giay;
+        }
+
+        // Đường dẫn video bài học
+        $videoUrl = $request->input('duong_dan_video') ?: $request->input('duong_dan_video_bai_giang');
+        if ($request->has('duong_dan_video') || $request->has('duong_dan_video_bai_giang')) {
+            $baiHoc->duong_dan_video_bai_giang = $videoUrl;
+        }
+
+        // Nội dung chi tiết bài học
+        $noiDung = $request->input('noi_dung_bai_hoc') ?: $request->input('noi_dung_bai_hoc_chi_tiet');
+        if ($request->has('noi_dung_bai_hoc') || $request->has('noi_dung_bai_hoc_chi_tiet')) {
+            $baiHoc->noi_dung_bai_hoc_chi_tiet = $noiDung ?? $baiHoc->noi_dung_bai_hoc_chi_tiet ?? '';
+        }
+
+        // Tóm tắt kiến thức cho AI
+        if ($request->filled('tom_tat_kien_thuc_cho_ai')) {
+            $baiHoc->tom_tat_kien_thuc_cho_ai = $request->tom_tat_kien_thuc_cho_ai;
+        } elseif (!empty($noiDung)) {
+            $baiHoc->tom_tat_kien_thuc_cho_ai = Str::limit(strip_tags($noiDung), 250);
+        }
+
+        // Cho phép học viên học thử bài này
+        $baiHoc->cho_phep_hoc_thu = $request->has('cho_phep_hoc_thu') ? 1 : 0;
+
+        $baiHoc->save();
+
+        return redirect()->route('giang_vien.tong_quan', ['tab' => 'khoa-hoc'])
+            ->with('active_tab', 'khoa-hoc')
+            ->with('success', "Đã cập nhật bài học '{$baiHoc->tieu_de_bai_hoc}' thành công!");
     }
 
     public function xoaBaiHoc($id)
@@ -807,5 +929,56 @@ class GiangVienController extends Controller
                 ->with('active_tab', 'de-thi')
                 ->with('error', 'Lỗi khi xóa đề thi: ' . $e->getMessage());
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 5. Kiểm duyệt học viên đăng ký khóa học
+    |--------------------------------------------------------------------------
+    */
+    public function duyetHocVien($id)
+    {
+        $user = Auth::user();
+        $ghiDanh = GhiDanhKhoaHoc::with('khoaHoc', 'hocVien')->findOrFail($id);
+
+        // Kiểm tra quyền: khóa học phải do Giảng viên hiện tại phụ trách (hoặc Admin)
+        if ((int)$user->id_phan_quyen !== 1 && (int)$ghiDanh->khoaHoc->id_giang_vien_phu_trach !== (int)$user->id_nguoi_dung) {
+            return redirect()->route('giang_vien.tong_quan', ['tab' => 'duyet-hoc-vien'])
+                ->with('active_tab', 'duyet-hoc-vien')
+                ->with('error', 'Bạn không có quyền quản lý khóa học này.');
+        }
+
+        $ghiDanh->trang_thai_duyet = 1;
+        $ghiDanh->save();
+
+        $tenHocVien = $ghiDanh->hocVien->ho_va_ten ?? 'Học viên';
+        $tenKhoaHoc = $ghiDanh->khoaHoc->tieu_de_khoa_hoc ?? 'khóa học';
+
+        return redirect()->route('giang_vien.tong_quan', ['tab' => 'duyet-hoc-vien'])
+            ->with('active_tab', 'duyet-hoc-vien')
+            ->with('success', "Đã phê duyệt cho học viên '{$tenHocVien}' tham gia khóa học '{$tenKhoaHoc}' thành công!");
+    }
+
+    public function tuChoiHocVien($id)
+    {
+        $user = Auth::user();
+        $ghiDanh = GhiDanhKhoaHoc::with('khoaHoc', 'hocVien')->findOrFail($id);
+
+        // Kiểm tra quyền
+        if ((int)$user->id_phan_quyen !== 1 && (int)$ghiDanh->khoaHoc->id_giang_vien_phu_trach !== (int)$user->id_nguoi_dung) {
+            return redirect()->route('giang_vien.tong_quan', ['tab' => 'duyet-hoc-vien'])
+                ->with('active_tab', 'duyet-hoc-vien')
+                ->with('error', 'Bạn không có quyền quản lý khóa học này.');
+        }
+
+        $ghiDanh->trang_thai_duyet = 2;
+        $ghiDanh->save();
+
+        $tenHocVien = $ghiDanh->hocVien->ho_va_ten ?? 'Học viên';
+        $tenKhoaHoc = $ghiDanh->khoaHoc->tieu_de_khoa_hoc ?? 'khóa học';
+
+        return redirect()->route('giang_vien.tong_quan', ['tab' => 'duyet-hoc-vien'])
+            ->with('active_tab', 'duyet-hoc-vien')
+            ->with('warning', "Đã từ chối yêu cầu đăng ký của học viên '{$tenHocVien}' đối với khóa học '{$tenKhoaHoc}'.");
     }
 }

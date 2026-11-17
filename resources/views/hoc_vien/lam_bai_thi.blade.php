@@ -1008,7 +1008,12 @@
             </div>
 
             {{-- Right — Timer --}}
-            <div class="exam-header-right">
+            <div class="exam-header-right d-flex align-items-center gap-2">
+                @if(Auth::check() && Auth::user()->id_phan_quyen == 2)
+                    <a href="{{ route('giang_vien.tong_quan', ['tab' => 'de-thi']) }}" class="btn btn-sm btn-outline-light rounded-pill px-3 py-1 text-xs" title="Thoát chế độ thi thử về bàn làm việc" style="border: 1px solid rgba(255,255,255,0.4); font-size: 0.8rem; text-decoration: none;">
+                        <i class="fas fa-arrow-left me-1"></i> Thoát thi thử
+                    </a>
+                @endif
                 <div class="timer-badge normal" id="timerBadge">
                     <i class="fas fa-clock"></i>
                     <span id="timerDisplay">{{ sprintf('%02d', $deThi->thoi_gian_lam_bai ?? 15) }}:00</span>
@@ -1067,9 +1072,15 @@
                     @endif
 
                     <div class="result-actions">
-                        <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-result btn-result-primary">
-                            <i class="fas fa-home"></i> Về khóa học của tôi
-                        </a>
+                        @if(Auth::check() && Auth::user()->id_phan_quyen == 2)
+                            <a href="{{ route('giang_vien.tong_quan', ['tab' => 'de-thi']) }}" class="btn-result btn-result-primary">
+                                <i class="fas fa-arrow-left"></i> Về Bàn làm việc Giảng viên
+                            </a>
+                        @else
+                            <a href="{{ route('hoc_vien.tong_quan') }}" class="btn-result btn-result-primary">
+                                <i class="fas fa-home"></i> Về khóa học của tôi
+                            </a>
+                        @endif
                         <a href="{{ route('quiz.take', $deThi->id_de_thi) }}" class="btn-result btn-result-secondary">
                             <i class="fas fa-rotate-right"></i> Làm lại bài thi
                         </a>

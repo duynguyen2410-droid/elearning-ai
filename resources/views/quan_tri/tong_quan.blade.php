@@ -24,7 +24,7 @@
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 1.25rem;
-        padding: 1.5rem 1.25rem;
+        padding: 1.25rem 1rem;
         box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.04);
         position: sticky;
         top: 90px;
@@ -75,10 +75,10 @@
     .admin-nav-pills .nav-link {
         display: flex;
         align-items: center;
-        padding: 0.8rem 1rem;
+        padding: 0.75rem 0.85rem;
         border-radius: 0.85rem;
         font-weight: 600;
-        font-size: 0.92rem;
+        font-size: 0.88rem;
         color: #475569;
         transition: all 0.2s ease;
         border: 1px solid transparent;
@@ -338,13 +338,13 @@
      KHUNG CHÍNH: BỐ CỤC 2 CỘT (SIDEBAR DỌC + TABS NỘI DUNG)
 ══════════════════════════════════════════════════════════════ --}}
 <div class="admin-wrapper">
-    <div class="container-xxl px-3 px-lg-4">
+    <div class="container-fluid px-4 px-lg-5">
         <div class="row g-4">
 
             {{-- ──────────────────────────────────────────
-                 CỘT TRÁI: MENU DỌC (SIDEBAR - 260px)
+                 CỘT TRÁI: MENU DỌC (SIDEBAR - col-lg-2)
             ────────────────────────────────────────── --}}
-            <div class="col-lg-3 col-xl-3">
+            <div class="col-lg-2">
                 <div class="admin-sidebar-card">
 
                     {{-- Admin Profile Snippet --}}
@@ -455,9 +455,9 @@
             </div>
 
             {{-- ──────────────────────────────────────────
-                 CỘT PHẢI: NỘI DUNG HIỂN THỊ (TABS - col-lg-9)
+                 CỘT PHẢI: NỘI DUNG HIỂN THỊ (TABS - col-lg-10)
             ────────────────────────────────────────── --}}
-            <div class="col-lg-9 col-xl-9">
+            <div class="col-lg-10">
                 <div class="tab-content" id="adminMenuTabContent">
 
                     {{-- ══════════════════════════════════════════════════════
@@ -583,7 +583,7 @@
                                                 @forelse ($deThiGanDay as $dt)
                                                     <tr>
                                                         <td class="ps-3">
-                                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 190px;" title="{{ $dt->tieu_de_de_thi }}">
+                                                            <div class="fw-semibold text-dark mb-0.5">
                                                                 {{ $dt->tieu_de_de_thi }}
                                                             </div>
                                                             <span class="text-xs text-muted">
@@ -591,7 +591,7 @@
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <div class="text-xs text-dark fw-medium text-truncate" style="max-width: 160px;">
+                                                            <div class="text-xs text-dark fw-medium">
                                                                 {{ $dt->baiHoc->tieu_de_bai_hoc ?? 'Bài học chung' }}
                                                             </div>
                                                         </td>
@@ -703,31 +703,42 @@
                                     @forelse ($danhSachDanhMuc as $dm)
                                         <div class="col-md-6 col-xl-4">
                                             <div class="category-box-card">
-                                                <div>
-                                                    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2.5">
-                                                        <h6 class="flex-grow-1 fw-bold text-dark text-break text-wrap category-name-full mb-0" style="font-size: 0.96rem; line-height: 1.45; word-break: break-word; overflow-wrap: break-word; white-space: normal;">
-                                                            {{ $dm->ten_danh_muc }}
-                                                        </h6>
-                                                        <div class="d-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
-                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill text-xs px-2.5 py-1 fw-semibold">
-                                                                {{ $dm->danh_sach_khoa_hoc_count ?? $dm->khoa_hoc_count ?? 0 }} khóa học
-                                                            </span>
+                                                <div class="d-flex align-items-start gap-3">
+                                                    @if($dm->hinh_anh && file_exists(public_path($dm->hinh_anh)))
+                                                        <img src="{{ asset($dm->hinh_anh) }}" alt="{{ $dm->ten_danh_muc }}" class="rounded-3 border flex-shrink-0" style="width: 44px; height: 44px; object-fit: cover;">
+                                                    @else
+                                                        <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                                                            <i class="fa-solid fa-layer-group"></i>
+                                                        </div>
+                                                    @endif
+                                                    <div class="flex-grow-1 overflow-hidden">
+                                                        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-1.5">
+                                                            <h6 class="flex-grow-1 fw-bold text-dark text-break text-wrap category-name-full mb-0" style="font-size: 0.96rem; line-height: 1.45; word-break: break-word; overflow-wrap: break-word; white-space: normal;">
+                                                                {{ $dm->ten_danh_muc }}
+                                                            </h6>
+                                                            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill text-xs px-2.5 py-1 fw-semibold">
+                                                                    {{ $dm->danh_sach_khoa_hoc_count ?? $dm->khoa_hoc_count ?? 0 }} khóa học
+                                                                </span>
 
-                                                            {{-- Chỉ hiển thị nút xóa khi danh mục KHÔNG có khóa học --}}
-                                                            @if (($dm->danh_sach_khoa_hoc_count ?? $dm->khoa_hoc_count ?? 0) === 0)
-                                                                <form action="{{ route('quan_tri.danh_muc.xoa', $dm->id_danh_muc) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa danh mục \'{{ $dm->ten_danh_muc }}\'?');" class="d-inline m-0">
+                                                                {{-- Nút Chỉnh sửa danh mục --}}
+                                                                <button type="button" class="btn btn-sm btn-outline-warning rounded-2 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalSuaDanhMuc_{{ $dm->id_danh_muc }}" title="Chỉnh sửa danh mục">
+                                                                    <i class="bi bi-pencil-square"></i>
+                                                                </button>
+
+                                                                {{-- Nút Xóa danh mục --}}
+                                                                <form action="{{ route('quan_tri.danh_muc.xoa', $dm->id_danh_muc) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này?');" class="d-inline m-0">
                                                                     @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1 rounded-circle" title="Xóa danh mục trống">
-                                                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" title="Xóa danh mục">
+                                                                        <i class="bi bi-trash"></i>
                                                                     </button>
                                                                 </form>
-                                                            @endif
+                                                            </div>
                                                         </div>
+                                                        <p class="text-muted text-xs mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;">
+                                                            {{ $dm->mo_ta_danh_muc ?: 'Chưa có mô tả cho danh mục này.' }}
+                                                        </p>
                                                     </div>
-                                                    <p class="text-muted text-xs mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;">
-                                                        {{ $dm->mo_ta_danh_muc ?: 'Chưa có mô tả cho danh mục này.' }}
-                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -760,7 +771,7 @@
                                             <th>Giảng viên</th>
                                             <th>Chương / Bài</th>
                                             <th>Trạng thái xuất bản</th>
-                                            <th class="text-end pe-4" style="width: 180px;">Thao tác</th>
+                                            <th class="text-center" style="width: 230px;">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -768,16 +779,27 @@
                                             <tr>
                                                 <td class="ps-4 fw-semibold text-muted text-xs">#{{ $kh->id_khoa_hoc }}</td>
                                                 <td>
-                                                    <div class="fw-bold text-dark mb-0.5 text-truncate" style="max-width: 250px;" title="{{ $kh->tieu_de_khoa_hoc }}">
-                                                        {{ $kh->tieu_de_khoa_hoc }}
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2 text-xs">
-                                                        <span class="badge bg-light text-primary border">
-                                                            {{ $kh->danhMuc->ten_danh_muc ?? 'Chung' }}
-                                                        </span>
-                                                        <span class="text-muted">
-                                                            <i class="fa-regular fa-clock me-1"></i>{{ $kh->tong_thoi_luong_phut ?? 120 }}p
-                                                        </span>
+                                                    <div class="d-flex align-items-center gap-2.5">
+                                                        @if($kh->hinh_anh && file_exists(public_path($kh->hinh_anh)))
+                                                            <img src="{{ asset($kh->hinh_anh) }}" alt="{{ $kh->tieu_de_khoa_hoc }}" class="rounded-2 flex-shrink-0 border" style="width: 44px; height: 44px; object-fit: cover;">
+                                                        @else
+                                                            <div class="rounded-2 bg-light text-primary border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                                                                <i class="fa-solid fa-graduation-cap fs-6"></i>
+                                                            </div>
+                                                        @endif
+                                                        <div>
+                                                            <div class="fw-bold text-dark mb-0.5" title="{{ $kh->tieu_de_khoa_hoc }}">
+                                                                {{ $kh->tieu_de_khoa_hoc }}
+                                                            </div>
+                                                            <div class="d-flex align-items-center gap-2 text-xs">
+                                                                <span class="badge bg-light text-primary border">
+                                                                    {{ $kh->danhMuc->ten_danh_muc ?? 'Chung' }}
+                                                                </span>
+                                                                <span class="text-muted">
+                                                                    <i class="fa-regular fa-clock me-1"></i>{{ $kh->tong_thoi_luong_phut ?? 120 }}p
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -807,19 +829,29 @@
                                                         </span>
                                                     @endif
                                                 </td>
-                                                <td class="text-end pe-4">
-                                                    <div class="d-inline-flex align-items-center gap-1.5">
+                                                <td class="text-center">
+                                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                                        {{-- Nút Sửa khóa học & ảnh thumbnail --}}
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2 py-1 text-nowrap" data-bs-toggle="modal" data-bs-target="#modalSuaKhoaHocAdmin_{{ $kh->id_khoa_hoc }}" title="Sửa thông tin và ảnh khóa học">
+                                                            <i class="fa-solid fa-pen-to-square text-xs me-1"></i> Sửa
+                                                        </button>
+
+                                                        {{-- Nút Phân công Giảng viên --}}
+                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1 text-nowrap" data-bs-toggle="modal" data-bs-target="#modalPhanCongGiangVien_{{ $kh->id_khoa_hoc }}" title="Phân công Giảng viên phụ trách">
+                                                            <i class="fa-solid fa-user-gear text-xs me-1"></i> Phân công GV
+                                                        </button>
+
                                                         {{-- Nút bật / tắt duyệt xuất bản --}}
                                                         <form action="{{ route('quan_tri.khoa_hoc.duyet', $kh->id_khoa_hoc) }}" method="POST" class="m-0">
                                                             @csrf
                                                             @if (($kh->trang_thai_xuat_ban ?? '') === 'xuat_ban' || ($kh->trang_thai_xuat_ban ?? '') === 'cong_khai' || ($kh->trang_thai_xuat_ban ?? '') === '1')
                                                                 <input type="hidden" name="trang_thai" value="cho_duyet">
-                                                                <button type="submit" class="btn btn-sm btn-outline-warning rounded-3 px-2 py-1" title="Tạm ẩn khóa học khỏi công khai">
+                                                                <button type="submit" class="btn btn-sm btn-outline-warning rounded-2 px-2 py-1 text-nowrap" title="Tạm ẩn khóa học khỏi công khai">
                                                                     <i class="fa-solid fa-eye-slash text-xs"></i> Ẩn
                                                                 </button>
                                                             @else
                                                                 <input type="hidden" name="trang_thai" value="xuat_ban">
-                                                                <button type="submit" class="btn btn-sm btn-outline-success rounded-3 px-2 py-1" title="Duyệt xuất bản công khai">
+                                                                <button type="submit" class="btn btn-sm btn-outline-success rounded-2 px-2 py-1 text-nowrap" title="Duyệt xuất bản công khai">
                                                                     <i class="fa-solid fa-check text-xs"></i> Duyệt
                                                                 </button>
                                                             @endif
@@ -829,7 +861,7 @@
                                                         <form action="{{ route('quan_tri.khoa_hoc.xoa', $kh->id_khoa_hoc) }}" method="POST" onsubmit="return confirm('CẢNH BÁO: Xóa khóa học \'{{ $kh->tieu_de_khoa_hoc }}\' sẽ xóa toàn bộ chương mục, bài học và đề thi liên quan. Bạn có chắc chắn?');" class="m-0">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa khóa học">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" title="Xóa khóa học">
                                                                 <i class="fa-solid fa-trash-can text-xs"></i>
                                                             </button>
                                                         </form>
@@ -898,7 +930,7 @@
                                             <th>Thời lượng</th>
                                             <th>Số câu</th>
                                             <th>Lượt thi</th>
-                                            <th class="text-end pe-4" style="width: 160px;">Thao tác</th>
+                                            <th class="text-center" style="width: 150px;">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -906,7 +938,7 @@
                                             <tr>
                                                 <td class="ps-4 fw-semibold text-muted text-xs">#{{ $dt->id_de_thi }}</td>
                                                 <td>
-                                                    <div class="fw-bold text-dark mb-0.5 text-truncate" style="max-width: 240px;" title="{{ $dt->tieu_de_de_thi }}">
+                                                    <div class="fw-bold text-dark mb-0.5">
                                                         {{ $dt->tieu_de_de_thi }}
                                                     </div>
                                                     <div class="text-muted text-xs">
@@ -914,11 +946,11 @@
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="fw-semibold text-dark text-xs text-truncate" style="max-width: 180px;">
+                                                    <div class="fw-semibold text-dark text-xs mb-0.5">
                                                         <i class="fa-solid fa-book-bookmark text-indigo-500 me-1"></i>
                                                         {{ $dt->baiHoc->tieu_de_bai_hoc ?? 'Bài học liên kết' }}
                                                     </div>
-                                                    <div class="text-muted text-xs text-truncate" style="max-width: 180px;">
+                                                    <div class="text-muted text-xs">
                                                         {{ $dt->baiHoc->chuongMuc->khoaHoc->tieu_de_khoa_hoc ?? '' }}
                                                     </div>
                                                 </td>
@@ -937,15 +969,15 @@
                                                         <i class="fa-solid fa-user-check text-success"></i> {{ $dt->danh_sach_luot_lam_bai_count ?? $dt->luot_lam_bai_thi_count ?? $dt->luot_lam_bai_count ?? ($dt->danhSachLuotLamBai ? $dt->danhSachLuotLamBai->count() : 0) }} lượt
                                                     </span>
                                                 </td>
-                                                <td class="text-end pe-4">
-                                                    <div class="d-inline-flex align-items-center gap-1.5">
+                                                <td class="text-center">
+                                                    <div class="d-flex align-items-center justify-content-center gap-2">
                                                         {{-- Nút Soi câu hỏi trong modal --}}
-                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalDetailQuiz{{ $dt->id_de_thi }}" title="Xem chi tiết câu hỏi">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalDetailQuiz{{ $dt->id_de_thi }}" title="Xem chi tiết câu hỏi">
                                                             <i class="fa-solid fa-eye text-xs"></i>
                                                         </button>
 
                                                         {{-- Nút Thi thử --}}
-                                                        <a href="{{ route('quiz.take', $dt->id_de_thi) }}" target="_blank" class="btn btn-sm btn-outline-success rounded-3 px-2 py-1" title="Vào thi thử nghiệm">
+                                                        <a href="{{ route('quiz.take', $dt->id_de_thi) }}" target="_blank" class="btn btn-sm btn-outline-success rounded-2 px-2 py-1" title="Vào thi thử nghiệm">
                                                             <i class="fa-solid fa-play text-xs"></i>
                                                         </a>
 
@@ -953,7 +985,7 @@
                                                         <form action="{{ route('quan_tri.de_thi.xoa', $dt->id_de_thi) }}" method="POST" onsubmit="return confirm('CẢNH BÁO: Xóa đề thi \'{{ $dt->tieu_de_de_thi }}\' sẽ xóa toàn bộ câu hỏi và kết quả thi của học viên. Bạn có chắc chắn?');" class="m-0">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa đề thi này">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" title="Xóa đề thi này">
                                                                 <i class="fa-solid fa-trash-can text-xs"></i>
                                                             </button>
                                                         </form>
@@ -1090,7 +1122,7 @@
                                             <th>Email</th>
                                             <th>Vai trò phân quyền</th>
                                             <th>Trạng thái</th>
-                                            <th class="text-end pe-4" style="width: 140px;">Thao tác</th>
+                                            <th class="text-center" style="width: 150px;">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody id="userTableBody">
@@ -1140,16 +1172,16 @@
                                                         <span class="badge bg-secondary text-white rounded-pill px-2 py-0.5 text-xs">Tạm khóa</span>
                                                     @endif
                                                 </td>
-                                                <td class="text-end pe-4">
-                                                    <div class="d-inline-flex align-items-center gap-1.5">
+                                                <td class="text-center">
+                                                    <div class="d-flex align-items-center justify-content-center gap-2">
                                                         {{-- Nút Đổi vai trò (Modal) --}}
-                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalEditRole{{ $u->id_nguoi_dung }}" title="Phân quyền vai trò">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalEditRole{{ $u->id_nguoi_dung }}" title="Phân quyền vai trò">
                                                             <i class="fa-solid fa-user-pen text-xs"></i>
                                                         </button>
 
                                                         {{-- Nút Cấp lại mật khẩu (Dành cho Giảng viên và Học viên) --}}
                                                         @if ($u->id_phan_quyen != 1)
-                                                            <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-3 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalResetPassword{{ $u->id_nguoi_dung }}" title="Cấp lại mật khẩu">
+                                                            <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-2 px-2 py-1" data-bs-toggle="modal" data-bs-target="#modalResetPassword{{ $u->id_nguoi_dung }}" title="Cấp lại mật khẩu">
                                                                 <i class="fa-solid fa-key text-xs"></i>
                                                             </button>
                                                         @endif
@@ -1159,7 +1191,7 @@
                                                             <form action="{{ route('quan_tri.tai_khoan.xoa', $u->id_nguoi_dung) }}" method="POST" onsubmit="return confirm('CẢNH BÁO: Xóa tài khoản \'{{ $u->ho_va_ten }}\' sẽ xóa toàn bộ tiến độ và kết quả làm bài thi liên quan. Bạn có chắc chắn?');" class="m-0">
                                                                 @csrf
                                                                 @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa tài khoản này">
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" title="Xóa tài khoản này">
                                                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                                                 </button>
                                                             </form>
@@ -1202,12 +1234,17 @@
                 </h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('quan_tri.danh_muc.them') }}" method="POST">
+            <form action="{{ route('quan_tri.danh_muc.them') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark text-sm">Tên danh mục <span class="text-danger">*</span></label>
                         <input type="text" name="ten_danh_muc" class="form-control rounded-3" placeholder="Ví dụ: Trí tuệ nhân tạo, Lập trình Web..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Hình ảnh đại diện danh mục</label>
+                        <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                        <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB)</small>
                     </div>
                     <div class="mb-2">
                         <label class="form-label fw-semibold text-dark text-sm">Mô tả danh mục</label>
@@ -1224,6 +1261,51 @@
         </div>
     </div>
 </div>
+
+{{-- 1.1 Modals Chỉnh sửa danh mục khóa học --}}
+@foreach ($danhSachDanhMuc as $dm)
+    <div class="modal fade" id="modalSuaDanhMuc_{{ $dm->id_danh_muc }}" tabindex="-1" aria-labelledby="modalSuaDanhMucLabel_{{ $dm->id_danh_muc }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom py-3">
+                    <h6 class="modal-title fw-bold text-dark text-truncate pe-2" id="modalSuaDanhMucLabel_{{ $dm->id_danh_muc }}">
+                        <i class="bi bi-pencil-square text-warning me-2"></i> Chỉnh sửa danh mục: {{ $dm->ten_danh_muc }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('quan_tri.danh_muc.cap_nhat', $dm->id_danh_muc) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">Tên danh mục <span class="text-danger">*</span></label>
+                            <input type="text" name="ten_danh_muc" class="form-control rounded-3" value="{{ $dm->ten_danh_muc }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Hình ảnh đại diện danh mục</label>
+                            @if($dm->hinh_anh && file_exists(public_path($dm->hinh_anh)))
+                                <div class="mb-2">
+                                    <img src="{{ asset($dm->hinh_anh) }}" alt="{{ $dm->ten_danh_muc }}" class="rounded-3 border shadow-xs" style="width: 80px; height: 80px; object-fit: cover;">
+                                </div>
+                            @endif
+                            <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                            <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB). Để trống nếu không muốn đổi ảnh.</small>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold text-dark text-sm">Mô tả danh mục</label>
+                            <textarea name="mo_ta_danh_muc" rows="3" class="form-control rounded-3" placeholder="Nhập tóm tắt mô tả về nhóm khóa học này...">{{ $dm->mo_ta_danh_muc }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 text-sm fw-semibold">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endforeach
 
 {{-- 2. Modal Thêm tài khoản mới --}}
 <div class="modal fade" id="modalThemTaiKhoan" tabindex="-1" aria-labelledby="modalThemTaiKhoanLabel" aria-hidden="true">
@@ -1447,6 +1529,123 @@
                     </a>
                     <button type="button" class="btn btn-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Đóng</button>
                 </div>
+            </div>
+        </div>
+    </div>
+@endforeach
+
+{{-- 5. Modals Phân công / Đổi Giảng viên phụ trách khóa học --}}
+@foreach ($danhSachKhoaHoc as $kh)
+    <div class="modal fade" id="modalPhanCongGiangVien_{{ $kh->id_khoa_hoc }}" tabindex="-1" aria-labelledby="modalPhanCongLabel_{{ $kh->id_khoa_hoc }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom py-3">
+                    <h6 class="modal-title fw-bold text-dark text-truncate pe-2" id="modalPhanCongLabel_{{ $kh->id_khoa_hoc }}">
+                        <i class="fa-solid fa-user-tie text-primary me-2"></i> Phân công Giảng viên phụ trách: {{ $kh->tieu_de_khoa_hoc }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('quan_tri.khoa_hoc.phan_cong', $kh->id_khoa_hoc) }}" method="POST">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">Khóa học</label>
+                            <input type="text" class="form-control rounded-3 bg-light text-dark fw-semibold" value="{{ $kh->tieu_de_khoa_hoc }}" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">
+                                Chọn Giảng viên phụ trách <span class="text-danger">*</span>
+                            </label>
+                            <select name="id_giang_vien" class="form-select rounded-3" required>
+                                <option value="">-- Chọn Giảng viên phụ trách --</option>
+                                @foreach ($danhSachGiangVien as $gv)
+                                    <option value="{{ $gv->id_nguoi_dung }}" 
+                                        {{ (int)($kh->id_giang_vien_phu_trach ?? $kh->id_nguoi_tao ?? 0) === (int)$gv->id_nguoi_dung ? 'selected' : '' }}>
+                                        {{ $gv->ho_va_ten }} ({{ $gv->dia_chi_email }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="alert alert-info-subtle border border-info-subtle rounded-3 p-2.5 text-xs text-dark d-flex align-items-start gap-2 mb-0">
+                            <i class="fa-solid fa-circle-info text-info mt-0.5"></i>
+                            <div>
+                                Giảng viên được phân công sẽ có đầy đủ quyền quản lý nội dung giáo trình, chương mục bài học và sinh đề thi AI cho khóa học này.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 text-sm fw-semibold">
+                            <i class="fa-solid fa-check me-1"></i> Lưu phân công
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endforeach
+
+{{-- 6. Modals Chỉnh sửa thông tin và hình ảnh khóa học dành cho Quản trị viên --}}
+@foreach ($danhSachKhoaHoc as $kh)
+    <div class="modal fade" id="modalSuaKhoaHocAdmin_{{ $kh->id_khoa_hoc }}" tabindex="-1" aria-labelledby="modalSuaKhoaHocAdminLabel_{{ $kh->id_khoa_hoc }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom py-3">
+                    <h6 class="modal-title fw-bold text-dark text-truncate pe-2" id="modalSuaKhoaHocAdminLabel_{{ $kh->id_khoa_hoc }}">
+                        <i class="fa-solid fa-pen-to-square text-primary me-2"></i> Chỉnh sửa khóa học: {{ $kh->tieu_de_khoa_hoc }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('quan_tri.khoa_hoc.cap_nhat', $kh->id_khoa_hoc) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">Tên khóa học <span class="text-danger">*</span></label>
+                            <input type="text" name="ten_khoa_hoc" class="form-control rounded-3" value="{{ $kh->tieu_de_khoa_hoc }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Hình ảnh đại diện khóa học</label>
+                            @if($kh->hinh_anh && file_exists(public_path($kh->hinh_anh)))
+                                <div class="mb-2">
+                                    <img src="{{ asset($kh->hinh_anh) }}" alt="{{ $kh->tieu_de_khoa_hoc }}" class="rounded-3 border shadow-xs" style="width: 140px; height: 80px; object-fit: cover;">
+                                </div>
+                            @endif
+                            <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                            <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB). Để trống nếu không muốn đổi ảnh.</small>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark text-sm">Danh mục đào tạo <span class="text-danger">*</span></label>
+                                <select name="id_danh_muc" class="form-select rounded-3" required>
+                                    @foreach ($danhSachDanhMuc as $dm)
+                                        <option value="{{ $dm->id_danh_muc }}" {{ (int)$kh->id_danh_muc === (int)$dm->id_danh_muc ? 'selected' : '' }}>
+                                            {{ $dm->ten_danh_muc }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark text-sm">Tổng thời lượng (phút)</label>
+                                <input type="number" name="tong_thoi_luong_phut" class="form-control rounded-3" value="{{ $kh->tong_thoi_luong_phut ?? 60 }}" min="10">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark text-sm">Mô tả ngắn gọn</label>
+                            <textarea name="mo_ta_ngan_gon" rows="3" class="form-control rounded-3">{{ $kh->mo_ta_ngan_gon }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 text-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 text-sm fw-semibold">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

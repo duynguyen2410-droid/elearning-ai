@@ -614,22 +614,26 @@
                         <div class="meta-item">
                             <span class="meta-badge duration">
                                 <i class="fa-regular fa-clock"></i>
-                                @if ($baiHoc->thoi_luong_video_giay)
-                                    {{ floor($baiHoc->thoi_luong_video_giay / 60) > 0 ? floor($baiHoc->thoi_luong_video_giay / 60) . ' phút' : gmdate('i:s', $baiHoc->thoi_luong_video_giay) }}
+                                @php
+                                    $tongGiay = (int) ($baiHoc->thoi_luong_video_giay ?? $baiHoc->thoi_luong ?? 0);
+                                    $phut = floor($tongGiay / 60);
+                                    $giay = $tongGiay % 60;
+                                @endphp
+                                @if ($tongGiay > 0)
+                                    @if ($phut > 0 && $giay > 0)
+                                        {{ $phut }} phút {{ $giay }} giây
+                                    @elseif ($phut > 0)
+                                        {{ $phut }} phút
+                                    @else
+                                        {{ $giay }} giây
+                                    @endif
                                 @else
-                                    15 phút
+                                    {{ $baiHoc->thoi_luong_hien_thi ?? '0 phút' }}
                                 @endif
                             </span>
                         </div>
 
-                        {{-- Free trial badge --}}
-                        @if ($baiHoc->cho_phep_hoc_thu)
-                            <div class="meta-item">
-                                <span class="meta-badge free">
-                                    <i class="fa-solid fa-gift"></i> Học thử miễn phí
-                                </span>
-                            </div>
-                        @endif
+
 
                         {{-- Lesson Type --}}
                         <div class="meta-item ms-auto text-secondary small">
@@ -702,17 +706,15 @@
                                 Làm bài kiểm tra ngay
                             </a>
                         @else
-                            <form action="{{ route('baihoc.ai-tao-cau-hoi', $baiHoc->id_bai_hoc) }}" method="POST" class="m-0">
-                                @csrf
-                                <button
-                                    type="submit"
-                                    class="btn-ai-generate-main"
-                                    onclick="this.innerHTML='<i class=\'fa-solid fa-spinner fa-spin\'></i> AI đang khởi tạo...'; this.disabled=true; this.form.submit();"
-                                >
-                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                    AI Tạo Đề Thi
-                                </button>
-                            </form>
+                            <button
+                                type="button"
+                                class="btn-ai-generate-main"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalHocVienTaoDeAi_{{ $baiHoc->id_chi_tiet_bai_hoc ?? $baiHoc->id_bai_hoc }}"
+                            >
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                AI Tạo Đề Thi
+                            </button>
                         @endif
                     </div>
                 </div>
@@ -730,27 +732,45 @@
                             Nội dung khóa học
                         </h3>
                         @php
+                            $currentUser = Auth::user();
+                            $canViewAll = ($isOwnerOrAdmin ?? false) || ($daDangKy ?? false);
+                            if (!isset($isOwnerOrAdmin) && $currentUser) {
+                                $isOwnerOrAdmin = ((int)$currentUser->id_phan_quyen === 1) ||
+                                    ($khoaHoc && ((int)$khoaHoc->id_giang_vien_phu_trach === (int)$currentUser->id_nguoi_dung || (int)($khoaHoc->id_nguoi_tao ?? 0) === (int)$currentUser->id_nguoi_dung));
+                                $daDangKy = $khoaHoc ? \App\Models\GhiDanhKhoaHoc::where('id_hoc_vien', $currentUser->id_nguoi_dung)->where('id_khoa_hoc', $khoaHoc->id_khoa_hoc)->exists() : false;
+                                $canViewAll = $isOwnerOrAdmin || $daDangKy;
+                            }
+
                             $totalLessonsCount = 0;
                             if (isset($khoaHoc->danhSachChuongMuc)) {
                                 foreach ($khoaHoc->danhSachChuongMuc as $ch) {
-                                    $totalLessonsCount += $ch->danhSachBaiHoc ? $ch->danhSachBaiHoc->count() : 0;
+                                    if ($ch->danhSachBaiHoc) {
+                                        $totalLessonsCount += $ch->danhSachBaiHoc->count();
+                                    }
                                 }
+                            }
+                            if ($totalLessonsCount === 0 && $danhSachBaiHoc) {
+                                $totalLessonsCount = $danhSachBaiHoc->count();
                             }
                         @endphp
                         <span class="playlist-count">
-                            {{ $totalLessonsCount ?: ($danhSachBaiHoc ? $danhSachBaiHoc->count() : 1) }} bài học
+                            {{ $totalLessonsCount }} bài học
                         </span>
                     </div>
 
                     <div class="playlist-body">
                         @if (isset($khoaHoc->danhSachChuongMuc) && $khoaHoc->danhSachChuongMuc->count())
                             @foreach ($khoaHoc->danhSachChuongMuc as $idxChuong => $chapter)
-                                <div class="chapter-heading-row">
-                                    {{ $chapter->tieu_de_chuong_muc ?? ('Chương ' . ($idxChuong + 1)) }}
-                                </div>
+                                @php
+                                    $chapterLessons = $chapter->danhSachBaiHoc ? $chapter->danhSachBaiHoc->values() : collect();
+                                @endphp
 
-                                @if ($chapter->danhSachBaiHoc && $chapter->danhSachBaiHoc->count())
-                                    @foreach ($chapter->danhSachBaiHoc as $idxLesson => $lessonItem)
+                                @if ($chapterLessons->count())
+                                    <div class="chapter-heading-row">
+                                        {{ $chapter->tieu_de_chuong_muc ?? ('Chương ' . ($idxChuong + 1)) }}
+                                    </div>
+
+                                    @foreach ($chapterLessons as $idxLesson => $lessonItem)
                                         @php
                                             $isActive = ($lessonItem->id_bai_hoc == $baiHoc->id_bai_hoc);
                                             $hasQuiz = $lessonItem->deThi || $lessonItem->deThiTracNghiem;
@@ -775,10 +795,15 @@
                                             </div>
 
                                             <div class="playlist-item-meta">
-                                                @if ($lessonItem->thoi_luong_video_giay)
-                                                    {{ floor($lessonItem->thoi_luong_video_giay / 60) }}m
+                                                @php
+                                                    $itemSec = (int) ($lessonItem->thoi_luong_video_giay ?? $lessonItem->thoi_luong ?? 0);
+                                                    $itemM = floor($itemSec / 60);
+                                                    $itemS = $itemSec % 60;
+                                                @endphp
+                                                @if ($itemSec > 0)
+                                                    {{ $itemM > 0 ? $itemM . 'm' : '' }}{{ $itemS > 0 ? ' ' . $itemS . 's' : ($itemM == 0 ? '0s' : '') }}
                                                 @else
-                                                    15m
+                                                    {{ $lessonItem->thoi_luong_hien_thi ?? '--' }}
                                                 @endif
                                             </div>
                                         </a>
@@ -786,8 +811,10 @@
                                 @endif
                             @endforeach
                         @elseif ($danhSachBaiHoc && $danhSachBaiHoc->count())
-                            {{-- Fallback: Chapter lessons only --}}
-                            @foreach ($danhSachBaiHoc as $idxLesson => $lessonItem)
+                            @php
+                                $fallbackLessons = $danhSachBaiHoc->values();
+                            @endphp
+                            @foreach ($fallbackLessons as $idxLesson => $lessonItem)
                                 @php
                                     $isActive = ($lessonItem->id_bai_hoc == $baiHoc->id_bai_hoc);
                                 @endphp
@@ -806,10 +833,15 @@
                                         <span class="playlist-item-title">{{ $lessonItem->tieu_de_bai_hoc }}</span>
                                     </div>
                                     <div class="playlist-item-meta">
-                                        @if ($lessonItem->thoi_luong_video_giay)
-                                            {{ floor($lessonItem->thoi_luong_video_giay / 60) }}m
+                                        @php
+                                            $itemSec = (int) ($lessonItem->thoi_luong_video_giay ?? $lessonItem->thoi_luong ?? 0);
+                                            $itemM = floor($itemSec / 60);
+                                            $itemS = $itemSec % 60;
+                                        @endphp
+                                        @if ($itemSec > 0)
+                                            {{ $itemM > 0 ? $itemM . 'm' : '' }}{{ $itemS > 0 ? ' ' . $itemS . 's' : ($itemM == 0 ? '0s' : '') }}
                                         @else
-                                            15m
+                                            {{ $lessonItem->thoi_luong_hien_thi ?? '--' }}
                                         @endif
                                     </div>
                                 </a>
@@ -821,6 +853,131 @@
 
         </div>
 
+    </div>
+    {{-- ════════════════════════════════════════════════════════
+         MODAL: AI TẠO ĐỀ THI CHO BÀI HỌC NÀY
+    ════════════════════════════════════════════════════════ --}}
+    @php
+        $bhId = $baiHoc->id_chi_tiet_bai_hoc ?? $baiHoc->id_bai_hoc;
+        $soLanDaTao = 0;
+        if (Auth::check()) {
+            $soLanDaTao = \App\Models\DeThiTracNghiem::where(function($q) use ($bhId) {
+                $q->where('id_chi_tiet_bai_hoc', $bhId)->orWhere('id_bai_hoc', $bhId);
+            })->where('id_nguoi_tao', Auth::id())->count();
+        }
+        $isHocVien = (Auth::check() && (int)Auth::user()->id_phan_quyen === 3);
+        $isHetLuot = ($isHocVien && $soLanDaTao >= 3);
+    @endphp
+    <div class="modal fade" id="modalHocVienTaoDeAi_{{ $bhId }}" tabindex="-1" aria-labelledby="modalLabel_{{ $bhId }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(139, 92, 246, 0.18)); color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid rgba(79, 70, 229, 0.2); flex-shrink: 0;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0 fs-6" id="modalLabel_{{ $bhId }}">
+                                Khởi tạo Đề thi AI - Gemini 1.5
+                            </h5>
+                            <span class="text-xs text-muted">Cố vấn đề thi trắc nghiệm thông minh</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form action="{{ route('baihoc.ai-tao-cau-hoi', $baiHoc->id_bai_hoc) }}" method="POST" id="formTaoDeAi_{{ $bhId }}">
+                    @csrf
+                    <div class="modal-body px-4 py-3">
+                        {{-- Tên bài học muốn tạo đề --}}
+                        <div class="p-3 mb-3 rounded-3 bg-light border border-light-subtle">
+                            <div class="text-xs text-muted fw-semibold text-uppercase mb-1 d-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-book-open text-primary"></i>
+                                <span>Bài học áp dụng</span>
+                            </div>
+                            <div class="fw-bold text-dark fs-6">
+                                {{ $baiHoc->tieu_de_bai_hoc }}
+                            </div>
+                        </div>
+
+                        {{-- Thông tin lượt dùng --}}
+                        @if ($isHocVien)
+                            @if ($isHetLuot)
+                                <div class="alert alert-danger d-flex align-items-center gap-2.5 py-2.5 px-3 mb-3 rounded-3 border-danger-subtle shadow-xs" role="alert">
+                                    <i class="fa-solid fa-circle-exclamation fs-5 text-danger flex-shrink-0"></i>
+                                    <div>
+                                        <div class="fw-bold text-danger">Bạn đã hết lượt tạo đề thi AI!</div>
+                                        <div class="text-xs text-danger-emphasis">
+                                            Bạn đã sử dụng <strong>{{ $soLanDaTao }} / 3</strong> lượt tạo đề thi AI cho bài học này.
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="alert alert-info d-flex align-items-center justify-content-between py-2.5 px-3 mb-3 rounded-3 border-info-subtle shadow-xs" role="alert">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-circle-info fs-5 text-primary flex-shrink-0"></i>
+                                        <div>
+                                            <div class="text-xs text-secondary mb-0.5">Giới hạn phát sinh đề thi:</div>
+                                            <div class="text-xs text-dark">
+                                                Bạn đã sử dụng <strong>{{ $soLanDaTao }} / 3</strong> lượt tạo đề thi AI cho bài học này.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xs fw-semibold">
+                                        Còn {{ 3 - $soLanDaTao }} lượt
+                                    </span>
+                                </div>
+                            @endif
+                        @else
+                            <div class="alert alert-success d-flex align-items-center gap-2 py-2 px-3 mb-3 rounded-3 border-success-subtle text-xs" role="alert">
+                                <i class="fa-solid fa-infinity fs-6 text-success flex-shrink-0"></i>
+                                <div>
+                                    <span class="fw-semibold">Tài khoản Quản trị / Giảng viên:</span> Không giới hạn số lần phát sinh đề thi AI.
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Dropdown chọn số lượng câu hỏi mong muốn --}}
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold text-dark small mb-1.5 d-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-list-ol text-primary"></i>
+                                <span>Chọn số lượng câu hỏi mong muốn</span>
+                            </label>
+                            <select name="so_luong_cau_hoi" class="form-select form-select-sm py-2 rounded-3" {{ $isHetLuot ? 'disabled' : '' }}>
+                                <option value="3">3 câu hỏi (Kiểm tra nhanh)</option>
+                                <option value="5" selected>5 câu hỏi (Đầy đủ tiêu chuẩn)</option>
+                                <option value="10">10 câu hỏi (Nâng cao & Toàn diện)</option>
+                            </select>
+                            <div class="form-text text-muted text-xs mt-1.5 d-flex align-items-start gap-1">
+                                <i class="fa-solid fa-shield-halved text-success mt-0.5"></i>
+                                <span>Gemini tự động kiểm tra chống trùng lặp với các câu hỏi đã có của bài học.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light px-4 py-3 border-top-0 d-flex justify-content-between">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-1.5 text-xs" data-bs-dismiss="modal">
+                            Đóng
+                        </button>
+
+                        @if ($isHetLuot)
+                            <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4 py-1.5 text-xs fw-semibold" disabled>
+                                <i class="fa-solid fa-ban me-1"></i> Đã hết lượt tạo đề thi AI
+                            </button>
+                        @else
+                            <button
+                                type="submit"
+                                class="btn btn-sm btn-primary rounded-pill px-4 py-1.5 text-xs fw-semibold shadow-sm d-inline-flex align-items-center gap-1.5"
+                                onclick="this.innerHTML='<i class=\'fa-solid fa-spinner fa-spin\'></i> AI đang khởi tạo đề thi...'; this.classList.add('disabled'); this.form.submit();"
+                            >
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                Bắt đầu tạo đề thi AI
+                            </button>
+                        @endif
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 

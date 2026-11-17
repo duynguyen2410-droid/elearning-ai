@@ -32,8 +32,29 @@ class KiemTraHocVien
         }
 
         // 3. Nếu là Giảng viên (id_phan_quyen = 2):
-        // Cho phép xem chi tiết bài học / xem trước video nếu thuộc khóa học mà giảng viên sở hữu
         if ((int)$user->id_phan_quyen === 2) {
+            // 3a. Cho phép thi thử, nộp bài thi, xem kết quả làm bài thi để kiểm tra chất lượng đề thi
+            $isQuizAction = $request->routeIs(
+                'quiz.take',
+                'dethi.show',
+                'hoc_vien.lam_bai_thi',
+                'dethi.nopbai',
+                'hoc_vien.nop_bai',
+                'dethi.ketqua',
+                'hoc_vien.ket_qua_thi'
+            )
+            || $request->is('hoc-vien/thi/*')
+            || $request->is('hoc-vien/de-thi/*')
+            || $request->is('hoc-vien/lam-bai-thi/*')
+            || $request->is('hoc-vien/nop-bai*')
+            || $request->is('hoc-vien/ket-qua*')
+            || $request->is('quiz/*');
+
+            if ($isQuizAction) {
+                return $next($request);
+            }
+
+            // 3b. Cho phép xem chi tiết bài học / xem trước video nếu thuộc khóa học mà giảng viên sở hữu
             $isViewingLesson = $request->routeIs('student.lesson.show')
                 || $request->is('hoc-vien/bai-hoc/*')
                 || $request->is('student/bai-hoc/*')
@@ -58,24 +79,40 @@ class KiemTraHocVien
                 }
             }
 
-            // Chặn Giảng viên đối với các chức năng riêng của học viên (nộp bài thi, làm bài thi trắc nghiệm, dashboard học viên...)
+            // Chặn Giảng viên đối với các chức năng riêng như Dashboard cá nhân của học viên
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Khu vực thi cử và học tập cá nhân chỉ dành riêng cho Học viên!',
+                    'message' => 'Khu vực bảng điều khiển này chỉ dành riêng cho Học viên!',
                 ], 403);
             }
 
             return redirect()->route('giang_vien.tong_quan')
-                ->with('error', 'Khu vực làm bài thi và tiến độ học tập chỉ dành riêng cho Học viên!');
+                ->with('error', 'Bảng điều khiển cá nhân chỉ dành riêng cho Học viên!');
         }
 
         // 4. Nếu là Quản trị viên (id_phan_quyen = 1):
+        $isQuizAction = $request->routeIs(
+            'quiz.take',
+            'dethi.show',
+            'hoc_vien.lam_bai_thi',
+            'dethi.nopbai',
+            'hoc_vien.nop_bai',
+            'dethi.ketqua',
+            'hoc_vien.ket_qua_thi'
+        )
+        || $request->is('hoc-vien/thi/*')
+        || $request->is('hoc-vien/de-thi/*')
+        || $request->is('hoc-vien/lam-bai-thi/*')
+        || $request->is('hoc-vien/nop-bai*')
+        || $request->is('hoc-vien/ket-qua*')
+        || $request->is('quiz/*');
+
         $isViewingLesson = $request->routeIs('student.lesson.show')
             || $request->is('hoc-vien/bai-hoc/*')
             || $request->is('student/bai-hoc/*');
 
-        if ((int)$user->id_phan_quyen === 1 && $isViewingLesson) {
+        if ((int)$user->id_phan_quyen === 1 && ($isViewingLesson || $isQuizAction)) {
             return $next($request);
         }
 
@@ -87,6 +124,6 @@ class KiemTraHocVien
         }
 
         return redirect()->route('quan_tri.tong_quan')
-            ->with('error', 'Khu vực học tập và thi cử chỉ dành riêng cho Học viên!');
+            ->with('error', 'Khu vực học tập chỉ dành riêng cho Học viên!');
     }
 }

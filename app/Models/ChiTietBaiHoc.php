@@ -43,6 +43,52 @@ class ChiTietBaiHoc extends Model
         return $this->hasOne(DeThiTracNghiem::class, 'id_bai_hoc', 'id_bai_hoc')->latest('id_de_thi');
     }
 
+    public function getIdChiTietBaiHocAttribute()
+    {
+        return $this->id_bai_hoc;
+    }
+
+    public function getThoiLuongAttribute()
+    {
+        return $this->thoi_luong_video_giay;
+    }
+
+    public function setThoiLuongAttribute($value)
+    {
+        $this->attributes['thoi_luong_video_giay'] = $value;
+    }
+
+    // Thời lượng hiển thị đẹp mắt (10p 30s hoặc 10 phút)
+    public function getThoiLuongHienThiAttribute()
+    {
+        $total = (int) ($this->thoi_luong_video_giay ?? 0);
+        if ($total <= 0) {
+            return 'Chưa đặt';
+        }
+        $phut = floor($total / 60);
+        $giay = $total % 60;
+
+        if ($phut > 0 && $giay > 0) {
+            return "{$phut}p {$giay}s";
+        } elseif ($phut > 0) {
+            return "{$phut} phút";
+        } else {
+            return "{$giay} giây";
+        }
+    }
+
+    public function getThoiLuongPhutAttribute()
+    {
+        $total = (int) ($this->thoi_luong_video_giay ?? 0);
+        return (int) floor($total / 60);
+    }
+
+    public function getThoiLuongGiayAttribute()
+    {
+        $total = (int) ($this->thoi_luong_video_giay ?? 0);
+        return (int) ($total % 60);
+    }
+
     public function deThiTracNghiem()
     {
         return $this->hasOne(DeThiTracNghiem::class, 'id_bai_hoc', 'id_bai_hoc')->latest('id_de_thi');

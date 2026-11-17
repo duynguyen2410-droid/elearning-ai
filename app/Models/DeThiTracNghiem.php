@@ -15,6 +15,8 @@ class DeThiTracNghiem extends Model
 
     protected $fillable = [
         'id_bai_hoc',
+        'id_chi_tiet_bai_hoc',
+        'id_nguoi_tao',
         'tieu_de_de_thi',
         'mo_ta_yeu_cau',
         'thoi_luong_lam_bai_phut',
@@ -24,6 +26,12 @@ class DeThiTracNghiem extends Model
         'cho_phep_xem_loi_giai',
         'trang_thai_mo_de',
     ];
+
+    // Người tạo đề thi (Học viên hoặc Giảng viên/Admin)
+    public function nguoiTao()
+    {
+        return $this->belongsTo(User::class, 'id_nguoi_tao', 'id_nguoi_dung');
+    }
 
     // Đề thi gắn liền với một bài học
     public function baiHoc()
@@ -58,5 +66,15 @@ class DeThiTracNghiem extends Model
     public function luotLamBaiThi()
     {
         return $this->danhSachLuotLamBai();
+    }
+
+    public function getIdDeThiTracNghiemAttribute()
+    {
+        return $this->id_de_thi;
+    }
+
+    public function getThoiGianLamBaiAttribute()
+    {
+        return $this->thoi_luong_lam_bai_phut;
     }
 }

@@ -1357,15 +1357,14 @@
                     @foreach ($danhSachKhoaHoc->take(6) as $khoaHoc)
                         <div class="course-card fade-in-up">
                             <div class="course-thumb">
-                                @if ($khoaHoc->hinh_anh_dai_dien)
-                                    <img
-                                        src="{{ asset('storage/' . $khoaHoc->hinh_anh_dai_dien) }}"
-                                        alt="{{ $khoaHoc->ten_khoa_hoc }}"
-                                        loading="lazy"
-                                    >
+                                @if($khoaHoc->hinh_anh && file_exists(public_path($khoaHoc->hinh_anh)))
+                                    <img src="{{ asset($khoaHoc->hinh_anh) }}" alt="{{ $khoaHoc->ten_khoa_hoc ?? $khoaHoc->tieu_de_khoa_hoc }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" loading="lazy">
+                                @elseif ($khoaHoc->hinh_anh_dai_dien && file_exists(public_path('storage/' . $khoaHoc->hinh_anh_dai_dien)))
+                                    <img src="{{ asset('storage/' . $khoaHoc->hinh_anh_dai_dien) }}" alt="{{ $khoaHoc->ten_khoa_hoc ?? $khoaHoc->tieu_de_khoa_hoc }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" loading="lazy">
                                 @else
-                                    <div class="course-thumb-placeholder">
-                                        <i class="fas fa-book-open"></i>
+                                    {{-- Giữ nguyên khung icon cuốn sách tím nhạt mặc định --}}
+                                    <div class="d-flex align-items-center justify-content-center h-100 text-primary">
+                                        <i class="bi bi-book fs-1"></i>
                                     </div>
                                 @endif
 

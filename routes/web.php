@@ -87,8 +87,12 @@ Route::middleware('auth')->group(function () {
         // Quản lý & Kiểm duyệt Khóa học, Danh mục
         Route::get('/khoa-hoc', [QuanTriController::class, 'quanLyKhoaHoc'])->name('khoa_hoc');
         Route::post('/danh-muc/them', [QuanTriController::class, 'themDanhMuc'])->name('danh_muc.them');
-        Route::delete('/danh-muc/xoa/{id}', [QuanTriController::class, 'xoaDanhMuc'])->name('danh_muc.xoa');
+        Route::post('/danh-muc/cap-nhat/{id}', [QuanTriController::class, 'capNhatDanhMuc'])->name('danh_muc.cap_nhat');
+        Route::match(['post', 'delete'], '/danh-muc/xoa/{id}', [QuanTriController::class, 'xoaDanhMuc'])->name('danh_muc.xoa');
+        Route::post('/khoa-hoc/them', [QuanTriController::class, 'themKhoaHoc'])->name('khoa_hoc.them');
+        Route::post('/khoa-hoc/cap-nhat/{id}', [QuanTriController::class, 'capNhatKhoaHoc'])->name('khoa_hoc.cap_nhat');
         Route::post('/khoa-hoc/duyet/{id}', [QuanTriController::class, 'duyetKhoaHoc'])->name('khoa_hoc.duyet');
+        Route::post('/khoa-hoc/phan-cong/{id}', [QuanTriController::class, 'phanCongGiangVien'])->name('khoa_hoc.phan_cong');
         Route::delete('/khoa-hoc/xoa/{id}', [QuanTriController::class, 'xoaKhoaHoc'])->name('khoa_hoc.xoa');
 
         // Giám sát đề thi AI
@@ -113,6 +117,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/khoa-hoc/cap-nhat/{id}', [GiangVienController::class, 'capNhatKhoaHoc'])->name('khoa_hoc.cap_nhat');
         Route::post('/khoa-hoc/{id}/them-chuong', [GiangVienController::class, 'themChuong'])->name('chuong.them');
         Route::post('/chuong/{id}/them-bai-hoc', [GiangVienController::class, 'themBaiHoc'])->name('bai_hoc.them');
+        Route::post('/bai-hoc/cap-nhat/{id}', [GiangVienController::class, 'capNhatBaiHoc'])->name('bai_hoc.cap_nhat');
         Route::delete('/bai-hoc/xoa/{id}', [GiangVienController::class, 'xoaBaiHoc'])->name('bai_hoc.xoa');
 
         // Chuyên môn Đề thi AI (Tự soạn thủ công & AI sinh thông minh chống trùng)
@@ -121,6 +126,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/bai-hoc/{id}/sinh-de-thi-ai', [GiangVienController::class, 'sinhDeThiAi'])->name('de_thi.sinh_ai');
         Route::post('/cau-hoi/cap-nhat/{id}', [GiangVienController::class, 'capNhatCauHoi'])->name('cau_hoi.cap_nhat');
         Route::delete('/de-thi/xoa/{id}', [GiangVienController::class, 'xoaDeThi'])->name('de_thi.xoa');
+
+        // Duyệt hoặc từ chối yêu cầu đăng ký học viên
+        Route::post('/duyet-hoc-vien/{id}', [GiangVienController::class, 'duyetHocVien'])->name('duyet_hoc_vien');
+        Route::post('/tu-choi-hoc-vien/{id}', [GiangVienController::class, 'tuChoiHocVien'])->name('tu_choi_hoc_vien');
 
         // Xem trước bài học và video bài giảng
         Route::get('/bai-hoc/{id}', [HocVienController::class, 'showLesson'])->name('bai_hoc.xem');
@@ -134,23 +143,32 @@ Route::middleware('auth')->group(function () {
         // Tổng quan bảng điều khiển học viên
         Route::get('/tong-quan', [HocVienController::class, 'dashboard'])->name('hoc_vien.tong_quan');
 
+        // Gửi yêu cầu đăng ký khóa học
+        Route::post('/dang-ky-khoa-hoc/{id}', [HocVienController::class, 'dangKyKhoaHoc'])->name('hoc_vien.dang_ky_khoa_hoc');
+
         // Chi tiết bài học
         Route::get('/bai-hoc/{id}', [HocVienController::class, 'showLesson'])->name('student.lesson.show');
+        Route::get('/chi-tiet-bai-hoc/{id}', [HocVienController::class, 'showLesson'])->name('hoc_vien.chi_tiet_bai_hoc');
 
         // Làm bài thi trắc nghiệm
         Route::get('/thi/{id}', [ThiTracNghiemController::class, 'take'])->name('quiz.take');
         Route::get('/de-thi/{id}', [ThiTracNghiemController::class, 'take'])->name('dethi.show');
+        Route::get('/lam-bai-thi/{id}', [ThiTracNghiemController::class, 'take'])->name('hoc_vien.lam_bai_thi');
 
         // Nộp bài thi
         Route::post('/nop-bai/{id}', [AiTaoDeThiController::class, 'nopBai'])->name('dethi.nopbai');
         Route::post('/nop-bai', [AiTaoDeThiController::class, 'nopBai']);
         Route::post('/de-thi/{id}/nop-bai', [AiTaoDeThiController::class, 'nopBai']);
+        Route::post('/lam-bai-thi/{id}/nop-bai', [AiTaoDeThiController::class, 'nopBai'])->name('hoc_vien.nop_bai');
 
         // Xem kết quả làm bài thi
         Route::get('/ket-qua/{id}', [AiTaoDeThiController::class, 'xemKetQua'])->name('dethi.ketqua');
+        Route::get('/ket-qua-thi/{id}', [AiTaoDeThiController::class, 'xemKetQua'])->name('hoc_vien.ket_qua_thi');
 
         // AI Tạo câu hỏi trắc nghiệm tự động
         Route::post('/bai-hoc/{id}/ai-tao-cau-hoi', [AiTaoDeThiController::class, 'generateQuiz'])->name('baihoc.ai-tao-cau-hoi');
+        Route::post('/hoc-vien/bai-hoc/{id}/sinh-de-thi-ai', [AiTaoDeThiController::class, 'generateQuiz'])->name('hoc_vien.sinh_de_thi_ai');
+        Route::post('/hoc-vien/sinh-de-thi-ai/{id}', [AiTaoDeThiController::class, 'generateQuiz']);
 
         // Trợ lý học tập AI Gemini
         Route::post('/tro-ly-ai/hoi-dap', [TroLyAiController::class, 'ask']);

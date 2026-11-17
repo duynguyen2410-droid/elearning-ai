@@ -18,6 +18,7 @@ class DanhMucKhoaHoc extends Model
         'duong_dan_than_thien_slug',
         'mo_ta_danh_muc',
         'thu_tu_hien_thi',
+        'hinh_anh',
     ];
 
     // Quan hệ: Một danh mục có nhiều khóa học

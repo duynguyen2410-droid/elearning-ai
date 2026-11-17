@@ -51,26 +51,35 @@
                                         {{ $dm->danh_sach_khoa_hoc_count ?? 0 }} khóa học
                                     </span>
                                 </div>
-                                <h6 class="fw-bold text-dark mb-1">{{ $dm->ten_danh_muc }}</h6>
-                                <p class="text-muted small mb-2 line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                    {{ $dm->mo_ta_danh_muc ?: 'Chưa có mô tả cho danh mục này.' }}
-                                </p>
+                                <div class="d-flex align-items-start gap-2.5 mb-2">
+                                    @if($dm->hinh_anh && file_exists(public_path($dm->hinh_anh)))
+                                        <img src="{{ asset($dm->hinh_anh) }}" alt="{{ $dm->ten_danh_muc }}" class="rounded-3 border flex-shrink-0" style="width: 44px; height: 44px; object-fit: cover;">
+                                    @else
+                                        <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                                            <i class="fa-solid fa-layer-group"></i>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-1">{{ $dm->ten_danh_muc }}</h6>
+                                        <p class="text-muted small mb-0 line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                            {{ $dm->mo_ta_danh_muc ?: 'Chưa có mô tả cho danh mục này.' }}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                             <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
                                 <span class="text-xs text-muted font-monospace">/{{ $dm->duong_dan_than_thien_slug }}</span>
-                                @if (($dm->danh_sach_khoa_hoc_count ?? 0) === 0)
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1" data-bs-toggle="modal" data-bs-target="#modalSuaDanhMuc_{{ $dm->id_danh_muc }}" title="Chỉnh sửa danh mục">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
                                     <form action="{{ route('quan_tri.danh_muc.xoa', $dm->id_danh_muc) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này?');" class="m-0">
                                         @csrf
-                                        @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1" title="Xóa danh mục">
-                                            <i class="fa-solid fa-trash-can"></i>
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
-                                @else
-                                    <span class="text-xs text-muted" title="Không thể xóa khi có khóa học">
-                                        <i class="fa-solid fa-lock"></i>
-                                    </span>
-                                @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -111,14 +120,25 @@
                         <tr>
                             <td class="ps-4 fw-semibold text-muted">#{{ $kh->id_khoa_hoc }}</td>
                             <td>
-                                <div class="fw-bold text-dark mb-0.5">{{ $kh->tieu_de_khoa_hoc }}</div>
-                                <div class="d-flex align-items-center gap-2 small">
-                                    <span class="badge bg-light text-primary border text-xs">
-                                        <i class="fa-solid fa-tag me-1"></i> {{ $kh->danhMuc->ten_danh_muc ?? 'Chung' }}
-                                    </span>
-                                    <span class="text-muted text-xs">
-                                        <i class="fa-regular fa-clock me-1"></i> {{ $kh->tong_thoi_luong_phut ?? 120 }} phút
-                                    </span>
+                                <div class="d-flex align-items-center gap-2.5">
+                                    @if($kh->hinh_anh && file_exists(public_path($kh->hinh_anh)))
+                                        <img src="{{ asset($kh->hinh_anh) }}" alt="{{ $kh->tieu_de_khoa_hoc }}" class="rounded-2 flex-shrink-0 border" style="width: 44px; height: 44px; object-fit: cover;">
+                                    @else
+                                        <div class="rounded-2 bg-light text-primary border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                                            <i class="fa-solid fa-graduation-cap fs-6"></i>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <div class="fw-bold text-dark mb-0.5">{{ $kh->tieu_de_khoa_hoc }}</div>
+                                        <div class="d-flex align-items-center gap-2 small">
+                                            <span class="badge bg-light text-primary border text-xs">
+                                                <i class="fa-solid fa-tag me-1"></i> {{ $kh->danhMuc->ten_danh_muc ?? 'Chung' }}
+                                            </span>
+                                            <span class="text-muted text-xs">
+                                                <i class="fa-regular fa-clock me-1"></i> {{ $kh->tong_thoi_luong_phut ?? 120 }} phút
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                             <td>
@@ -232,7 +252,7 @@
 <div class="modal fade" id="modalThemDanhMuc" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
-            <form action="{{ route('quan_tri.danh_muc.them') }}" method="POST">
+            <form action="{{ route('quan_tri.danh_muc.them') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header border-bottom py-3">
                     <h5 class="modal-title fw-bold text-dark">
@@ -244,6 +264,11 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark">Tên danh mục <span class="text-danger">*</span></label>
                         <input type="text" name="ten_danh_muc" class="form-control rounded-3 py-2" placeholder="Ví dụ: Trí Tuệ Nhân Tạo & Machine Learning" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Hình ảnh đại diện danh mục</label>
+                        <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                        <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB)</small>
                     </div>
                     <div class="mb-2">
                         <label class="form-label fw-semibold text-dark">Mô tả ngắn danh mục</label>
@@ -258,4 +283,47 @@
         </div>
     </div>
 </div>
+
+{{-- Modals Chỉnh Sửa Danh Mục --}}
+@foreach ($danhSachDanhMuc as $dm)
+    <div class="modal fade" id="modalSuaDanhMuc_{{ $dm->id_danh_muc }}" tabindex="-1" aria-labelledby="modalSuaDanhMucLabel_{{ $dm->id_danh_muc }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <form action="{{ route('quan_tri.danh_muc.cap_nhat', $dm->id_danh_muc) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-header border-bottom py-3">
+                        <h5 class="modal-title fw-bold text-dark">
+                            <i class="bi bi-pencil-square text-warning me-1"></i> Chỉnh Sửa Danh Mục: {{ $dm->ten_danh_muc }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark">Tên danh mục <span class="text-danger">*</span></label>
+                            <input type="text" name="ten_danh_muc" class="form-control rounded-3 py-2" value="{{ $dm->ten_danh_muc }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Hình ảnh đại diện danh mục</label>
+                            @if($dm->hinh_anh && file_exists(public_path($dm->hinh_anh)))
+                                <div class="mb-2">
+                                    <img src="{{ asset($dm->hinh_anh) }}" alt="{{ $dm->ten_danh_muc }}" class="rounded-3 border shadow-xs" style="width: 80px; height: 80px; object-fit: cover;">
+                                </div>
+                            @endif
+                            <input type="file" name="hinh_anh" class="form-control" accept="image/*">
+                            <small class="text-muted">Hỗ trợ file: JPG, PNG, WEBP (tối đa 2MB). Để trống nếu không muốn đổi ảnh.</small>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold text-dark">Mô tả ngắn danh mục</label>
+                            <textarea name="mo_ta_danh_muc" rows="3" class="form-control rounded-3" placeholder="Mô tả tóm tắt nội dung các khóa học thuộc nhóm danh mục này...">{{ $dm->mo_ta_danh_muc }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 btn-sm fw-semibold">Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endforeach
 @endsection
